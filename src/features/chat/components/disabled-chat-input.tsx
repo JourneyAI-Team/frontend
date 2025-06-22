@@ -3,7 +3,7 @@ import { Paperclip, Send, AtSign, Globe, Layers } from "lucide-react";
 
 export const DisabledChatInput = () => {
   return (
-    <div className="border-t bg-white/80 backdrop-blur-sm px-4 py-6 mt-8">
+    <div className="sticky bottom-0 border-t bg-white/80 backdrop-blur-sm px-4 py-6 mt-8">
       <div className="max-w-4xl mx-auto">
         <div className="relative opacity-50 pointer-events-none">
           <div className="relative bg-background border border-gray-300 rounded-2xl overflow-hidden shadow-sm">

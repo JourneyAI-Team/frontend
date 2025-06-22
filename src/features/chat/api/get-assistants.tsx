@@ -2,27 +2,15 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/libs/axios";
 import { type QueryConfig } from "@/libs/react-query";
-import type { Assistant } from "@/types/api";
+import type { Assistant } from "@/types/models";
 
 type GetAssistantsParams = {
   category?: string;
+  ids?: string[];
 };
 
-export const getAssistants = async (
-  params?: GetAssistantsParams
-): Promise<Assistant[]> => {
-  // Add intentional 0.8 second delay to show loading animation
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
-  const queryParams = new URLSearchParams();
-  if (params?.category) {
-    queryParams.append("category", params.category);
-  }
-
-  const url = `/assistant${
-    queryParams.toString() ? `?${queryParams.toString()}` : ""
-  }`;
-  return api.get(url);
+export const getAssistants = (params: GetAssistantsParams) => {
+  return api.get("/assistant", { params });
 };
 
 export const getAssistantsQueryOptions = (params?: GetAssistantsParams) => {

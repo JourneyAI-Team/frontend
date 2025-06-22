@@ -1,3 +1,5 @@
+// NOTE: Account is now called Workspace, all user facing text has been updated to use Workspace
+// but the components, api, etc remain to use Account.
 import { Form } from "@/components/ui/react-hook-form-wrapper";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,7 @@ import {
   type CreateAccountData,
 } from "../api/create-account";
 import { resolveAxiosError } from "@/utils/resolve-error";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CreateAccountModalProps {
   isOpen: boolean;
@@ -37,17 +40,16 @@ export const CreateAccountModal = ({
   onSuccess,
   isForced = false,
 }: CreateAccountModalProps) => {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(
-    undefined
-  );
+  const queryClient = useQueryClient();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const createAccountMutation = useCreateAccount({
     mutationConfig: {
       onSuccess: (data) => {
-        console.log("Account created successfully:", data);
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
         onSuccess?.(data);
         onClose();
-        setErrorMessage(undefined);
+        setErrorMessage(null);
       },
       onError: (error) => {
         const errMessage = resolveAxiosError(error);
@@ -62,7 +64,7 @@ export const CreateAccountModal = ({
 
   const handleClose = () => {
     if (!isForced && !createAccountMutation.isPending) {
-      setErrorMessage(undefined);
+      setErrorMessage(null);
       onClose();
     }
   };
@@ -77,12 +79,12 @@ export const CreateAccountModal = ({
       >
         <DialogHeader>
           <DialogTitle>
-            {isForced ? "Create Your First Account" : "Create New Account"}
+            {isForced ? "Create Your First Workspace" : "Create New Workspace"}
           </DialogTitle>
           <DialogDescription>
             {isForced
-              ? "To get started with Journey AI, you need to create your first client account."
-              : "Create a new client account to organize your conversations and data."}
+              ? "To get started with Journey AI, you need to create your first client workspace."
+              : "Create a new client workspace to organize your conversations and data."}
           </DialogDescription>
         </DialogHeader>
 
@@ -105,10 +107,10 @@ export const CreateAccountModal = ({
                 name="name"
                 render={({ field, fieldState: { error } }) => (
                   <FormItem>
-                    <FormLabel>Account Name *</FormLabel>
+                    <FormLabel>Workspace Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter account name"
+                        placeholder="Enter workspace name"
                         {...field}
                         disabled={createAccountMutation.isPending}
                       />
@@ -130,7 +132,7 @@ export const CreateAccountModal = ({
                     <FormLabel>Description *</FormLabel>
                     <FormControl>
                       <textarea
-                        placeholder="Enter account description"
+                        placeholder="Enter workspace description"
                         className={cn(
                           "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none",
                           createAccountMutation.isPending && "opacity-50"
@@ -168,8 +170,8 @@ export const CreateAccountModal = ({
                   {createAccountMutation.isPending
                     ? "Creating..."
                     : isForced
-                    ? "Create Account & Continue"
-                    : "Create Account"}
+                    ? "Create Workspace & Continue"
+                    : "Create Workspace"}
                 </Button>
               </div>
             </div>

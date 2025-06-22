@@ -1,9 +1,10 @@
+// TODO: Delete this file
 import { Card } from "@/components/ui/card";
-import type { Messages } from "@/types/api";
+import type { Message } from "@/types/models";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export const ChatMessage = ({ message }: { message: Messages }) => {
+export const ChatMessage = ({ message }: { message: Message }) => {
   const isUser = message.sender === "user";
 
   // For user messages, get content from input
@@ -14,7 +15,7 @@ export const ChatMessage = ({ message }: { message: Messages }) => {
     return (
       <div className="flex w-full justify-end">
         <div className="flex flex-col space-y-1 max-w-[80%]">
-          <Card className="px-4 py-3 bg-blue-600 text-white border-blue-600 rounded-2xl shadow-sm">
+          <Card className="px-4 py-3 bg-green-600 text-white border-green-600 rounded-2xl shadow-sm">
             <p className="text-sm whitespace-pre-wrap leading-relaxed">
               {content}
             </p>
