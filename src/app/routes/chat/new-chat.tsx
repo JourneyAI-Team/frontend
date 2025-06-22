@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import { AssistantCard } from "@/features/chat/components/assistant-card";
 import { useAssistants } from "@/features/chat/api/get-assistants";
 import { useCreateSession } from "@/features/chat/api/create-session";
-import { useNavigate, useParams } from "react-router";
 import { DisabledChatInput } from "@/features/chat/components/disabled-chat-input";
 
 const LoadingSpinner = () => (
@@ -29,7 +29,7 @@ export const NewChat = () => {
     mutationConfig: {
       onError: () => {},
       onSuccess: (data) => {
-        navigate(`/${accountId}/s/${data.id}`);
+        navigate(`/a/${accountId}/s/${data.id}`);
       },
     },
   });

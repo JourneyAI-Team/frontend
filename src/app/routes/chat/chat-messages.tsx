@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import useWebsocket from "react-use-websocket";
+import useWebsocket, { ReadyState } from "react-use-websocket";
 import type { QueryClient } from "@tanstack/react-query";
 import { useLoaderData, type LoaderFunctionArgs } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import { NewChatMessage } from "@/features/chat/components/new-chat-messages";
 
 import type { Events } from "@/types/api";
 import { Paperclip, Send, AtSign, Globe, Layers } from "lucide-react";
+import { API_KEY } from "@/utils/vars";
 
 export const loader =
   (queryClient: QueryClient) =>
@@ -66,11 +67,22 @@ export const ChatMessages = () => {
 
   // Establish Websocket connection
   const WS_URL = `${import.meta.env.VITE_WS_URL}`;
-  const { lastMessage, sendMessage } = useWebsocket(`${WS_URL}/ws/main`, {
-    queryParams: {
-      api_key: localStorage.getItem("journey_ai_api_key")!,
-    },
-  });
+  const { lastMessage, sendMessage, readyState } = useWebsocket(
+    `${WS_URL}/ws/main`,
+    {
+      queryParams: {
+        api_key: localStorage.getItem(API_KEY)!,
+      },
+    }
+  );
+
+  useEffect(() => {
+    if (readyState === ReadyState.OPEN) {
+      if (data?.length === 0) {
+        handleSendMessage({ content: "I'm ready to begin." });
+      }
+    }
+  }, [readyState]);
 
   // Clear new messages when refetching or when session changes
   useEffect(() => {
