@@ -1,25 +1,30 @@
-import { useAuth } from "@/hooks/use-user";
-import { Navigate } from "react-router";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { authState } = useAuth();
+  const navigate = useNavigate();
 
-  // If no token, redirect to login
-  if (!token) {
-    return <Navigate to="/" replace />;
+  useEffect(() => {
+    // redirect to login page if user is not authenticated
+    if (authState === "unauthenticated") {
+      navigate("/");
+    }
+  }, [authState]);
+
+  // if user is authenticated, show the children
+  if (authState === "authenticated") {
+    return <>{children}</>;
   }
 
-  // If token exists but user is not authenticated yet, show loading or let AuthLoader handle it
-  if (token && !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+  // loading state
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
       </div>
-    );
-  }
-
-  return <>{children}</>;
+    </div>
+  );
 };
