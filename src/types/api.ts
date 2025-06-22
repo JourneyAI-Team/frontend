@@ -1,105 +1,114 @@
-export type Base = {
-  id: string;
-  created_at: string;
+import type { Profile } from "./models";
+
+export type AuthTokens = {
+  access_token: string;
+  api_key: string;
 };
+
+/**
+ * Response from login and register endpoints
+ */
+export type AuthResponse = AuthTokens & { token_type: string };
+
+export type ProfileRead = Omit<Profile, "id" | "created_at">;
 
 export type SenderType = "assistant" | "user";
 
-export type EventType = "agent_switch" | "done" | "token";
+/**
+ * From websockets events data type
+ */
+export type EventDataType =
+  | "agent_switch"
+  | "done"
+  | "token"
+  | "message"
+  | "tool_call"
+  | "tool_output"
+  | "handoff"
+  | "error";
 
 export type Events =
   | "processing_session"
   | "agent_response"
   | "connection_established";
 
-export type User = {
-  email: string;
-  id: string;
-  role: string;
-  organization: string;
-  profile: Profile;
+export type BaseEventResponse<TData = { type: EventDataType }> = {
+  event: Events;
+  data: TData;
 };
 
-export type Profile = {
-  first_name?: string;
-  last_name?: string;
-  nickname?: string;
-};
-
-export type Login = {
-  access_token: string;
-  api_key: string;
-  token_type: string;
-};
-
-export type Account = {
-  name: string;
-  id: string;
-  description: string;
-  created_at: string;
-  organization_id: string;
+export type ConnectionEstablishedEvent = {
+  connection_id: string;
   user_id: string;
+  status: "connected" | "disconnected";
 };
 
-export type Session = {
-  id: string;
-  title: string;
-  summary: string | undefined;
-  created_at: string;
-  user_id: string;
-  organization_id: string;
-  assistant_id: string;
-  account_id: string;
+export type ErrorEvent = {
+  message: string;
 };
 
-export type Tool = {
-  name: string;
-  type: string;
-};
-
-export type ToolConfig = {
-  tools: Tool[];
-};
-
-export type Assistant = {
-  name: string;
-  internal_name: string;
-  description: string;
-  tool_config: ToolConfig;
-  testing: boolean;
-  version: string;
-  developer_prompt: string;
-  model: string;
-  id: string;
-  created_at: string;
-};
-
-type MessageInput = {
-  content: string;
-};
-
-type MessageOutputContent = {
-  text: string;
-  type: string;
-};
-
-type MessageOutput = {
-  id: string;
-  content: MessageOutputContent[];
-  role: string;
-  status: string;
-  type: string;
-};
-
-export type Messages = {
-  id: string;
-  output?: MessageOutput;
-  input?: MessageInput;
-  sender: SenderType;
-  created_at: string;
-  user_id: string;
-  organization_id: string;
+export type ProcessingSessionEvent = {
   session_id: string;
   assistant_id: string;
-  account_id: string;
+};
+
+export type AgentResponseTokenStreamEvent = {
+  type: "token";
+  delta: string;
+};
+
+export type AgentResponseAgentSwitchEvent = {
+  type: "agent_switch";
+  agent: string;
+};
+
+export type AgentResponseMessageOutputEvent = {
+  type: "message";
+  message: {
+    text: string;
+    role: string;
+    id: string;
+  };
+};
+
+export type AgentResponseToolCallEvent = {
+  type: "tool_call";
+  tool_call: {
+    id: string;
+    name: string;
+    args: Record<string, any>;
+  };
+};
+
+export type AgentResponseToolCallOutputEvent = {
+  type: "tool_output";
+  tool: {
+    id: string;
+    call_id: string;
+    raw_output: string;
+    output: string;
+  };
+};
+
+export type AgentResponseHandoffRequestedEvent = {
+  type: "handoff";
+  action: "requested";
+  from: string;
+  to: string;
+};
+
+export type AgentResponseHandoffOccuredEvent = {
+  type: "handoff";
+  action: "completed";
+  from: string;
+  to: string;
+};
+
+export type AgentResponseDoneEvent = {
+  type: "done";
+};
+
+export type AgentResponseErrorEvent = {
+  type: "error";
+  session_id: string;
 };
