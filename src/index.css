@@ -145,6 +145,11 @@
   }
   body {
     @apply bg-background text-foreground font-mabry-pro-regular;
+
+    input::-ms-reveal,
+    input::-ms-clear {
+      display: none;
+    }
   }
 }
 
@@ -153,12 +158,33 @@
     width: var(--radix-dropdown-menu-trigger-width);
     max-height: var(--radix-dropdown-menu-content-available-height);
   }
+
+  /* Hide scrollbar for webkit browsers (Chrome, Safari, Edge) */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for Firefox */
+  .hide-scrollbar {
+    scrollbar-width: none;
+  }
+
+  /* Hide scrollbar for IE and Edge */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+  }
 }
 
 /* Chat streaming cursor animation */
 @keyframes text-cursor {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .animate-text-cursor {
@@ -170,71 +196,71 @@
   .markdown-content {
     @apply text-sm leading-relaxed;
   }
-  
+
   .markdown-content h1 {
     @apply text-lg font-semibold mt-4 mb-2 first:mt-0;
   }
-  
+
   .markdown-content h2 {
     @apply text-base font-semibold mt-3 mb-2 first:mt-0;
   }
-  
+
   .markdown-content h3 {
     @apply text-sm font-semibold mt-3 mb-1 first:mt-0;
   }
-  
+
   .markdown-content p {
     @apply my-2 first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content ul {
     @apply my-2 pl-4 list-disc first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content ol {
     @apply my-2 pl-4 list-decimal first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content li {
     @apply my-1;
   }
-  
+
   .markdown-content strong {
     @apply font-semibold;
   }
-  
+
   .markdown-content em {
     @apply italic;
   }
-  
+
   .markdown-content code {
     @apply text-blue-600 bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
   }
-  
+
   .markdown-content pre {
     @apply bg-gray-100 border rounded-lg p-3 my-2 overflow-x-auto first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content pre code {
     @apply text-gray-800 bg-transparent px-0 py-0 text-sm;
   }
-  
+
   .markdown-content blockquote {
     @apply border-l-4 border-gray-300 pl-4 italic my-2 first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content a {
     @apply text-blue-600 hover:text-blue-800 underline;
   }
-  
+
   .markdown-content table {
     @apply w-full border-collapse my-2 first:mt-0 last:mb-0;
   }
-  
+
   .markdown-content th {
     @apply border border-gray-300 px-2 py-1 bg-gray-50 font-semibold text-left;
   }
-  
+
   .markdown-content td {
     @apply border border-gray-300 px-2 py-1;
   }
