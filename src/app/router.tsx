@@ -1,57 +1,52 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { useMemo } from "react";
 import { QueryClient } from "@tanstack/react-query";
-import {
-  loader as chatLayoutLoader,
-  ChatLayout,
-} from "@/components/layout/chat-layout";
 import { ChatBody } from "./routes/chat/chat-body";
-import { NewChat } from "./routes/chat/new-chat";
+
 import {
   ChatMessages,
   loader as chatMessagesLoader,
-} from "./routes/chat/chat-messages";
+} from "./routes/chat/chat-messages-v2";
+import { NewChatV2 } from "./routes/chat/new-chat-v2";
 import { ErrorPage } from "./routes/error";
-import { LoginPage } from "./routes/login";
-import { DashboardPage } from "./routes/dashboard";
+import { AuthPage } from "./routes/auth/auth";
+
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ChatLayout } from "@/components/layout/chat-layout";
 
 const createAppRouter = (queryClient: QueryClient) =>
   createBrowserRouter([
     {
       path: "/",
-      element: <LoginPage />,
+      element: <AuthPage />,
       errorElement: <ErrorPage />,
     },
     {
-      path: "/dashboard",
+      path: "/setup",
       element: (
         <ProtectedRoute>
-          <DashboardPage />
+          <ChatLayout isSetup={true} />
         </ProtectedRoute>
       ),
-      errorElement: <ErrorPage />,
     },
     {
-      path: "/:accountId",
+      path: "/a/:accountId",
       element: (
         <ProtectedRoute>
           <ChatLayout />
         </ProtectedRoute>
       ),
-      loader: chatLayoutLoader(queryClient),
-      errorElement: <ErrorPage />,
       children: [
         {
-          path: "/:accountId",
+          path: "/a/:accountId",
           element: (
             <ChatBody>
-              <NewChat />
+              <NewChatV2 />
             </ChatBody>
           ),
         },
         {
-          path: "/:accountId/s/:sessionId",
+          path: "/a/:accountId/s/:sessionId",
           element: (
             <ChatBody>
               <ChatMessages />
