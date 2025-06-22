@@ -1,3 +1,12 @@
+import { useEffect, useState } from "react";
+import type { QueryClient } from "@tanstack/react-query";
+import {
+  useNavigate,
+  useParams,
+  type LoaderFunctionArgs,
+  NavLink,
+  Outlet,
+} from "react-router";
 import {
   CirclePlus,
   UserRoundPlus,
@@ -5,15 +14,9 @@ import {
   House,
   ChevronsUpDown,
 } from "lucide-react";
-import { type QueryClient } from "@tanstack/react-query";
-import {
-  NavLink,
-  Outlet,
-  useLoaderData,
-  useNavigate,
-  type LoaderFunctionArgs,
-} from "react-router";
-import { useState } from "react";
+
+import { CreateAccountModal } from "@/features/chat/components/create-account-modal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -39,94 +42,29 @@ import {
   DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { GptModelSelectButton } from "@/features/chat/components/gpt-model-select-button";
-import { AccountDropdownMenuItem } from "@/features/chat/components/account-dropdown-menu-item";
-import { AccountSelectButton } from "@/features/chat/components/accounts-select-button";
-import { CreateAccountModal } from "@/features/chat/components/create-account-modal";
-import { useSessions } from "@/features/chat/api/get-sessions";
-import { useAccounts } from "@/features/chat/api/get-accounts";
+import { useAuth } from "@/hooks/use-auth";
 import {
   getAccountQueryOptions,
   useAccount,
 } from "@/features/chat/api/get-account";
-import { useAuth } from "@/hooks/use-user";
-import type { Session } from "@/types/api";
+import { useListAccounts } from "@/features/chat/api/list-accounts";
 
-const loader =
+import { useSessions } from "@/features/chat/api/get-sessions";
+import { AccountSelectButton } from "@/features/chat/components/accounts-select-button";
+import { AccountDropdownMenuItem } from "@/features/chat/components/account-dropdown-menu-item";
+import { GptModelSelectButton } from "@/features/chat/components/gpt-model-select-button";
+
+import type { Base, Session } from "@/types/models";
+
+export const loader =
   (queryClient: QueryClient) =>
   async ({ params }: LoaderFunctionArgs) => {
     const accountId = params.accountId as string;
+
     await queryClient.ensureQueryData(getAccountQueryOptions({ accountId }));
     return { accountId };
   };
-
-const ChatSidebarHeader = ({
-  handleAccountClick,
-  onCreateAccount,
-}: {
-  handleAccountClick: (accountId: string) => void;
-  onCreateAccount: () => void;
-}) => {
-  const { accountId } = useLoaderData() as Awaited<
-    ReturnType<ReturnType<typeof loader>>
-  >;
-  const { data: accountsList } = useAccounts({});
-  const { data: account } = useAccount({ queryParams: { accountId } });
-
-  const accountsDropdownOptions = [
-    {
-      name: "Create Account",
-      icon: <CirclePlus />,
-    },
-    {
-      name: "Join Account",
-      icon: <UserRoundPlus />,
-    },
-  ];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <SidebarMenuButton
-          size="lg"
-          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-        >
-          <AccountSelectButton accountName={account?.name || ""} />
-        </SidebarMenuButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="dropdown-content-width-full">
-        <DropdownMenuGroup>
-          {accountsList?.map((account) => (
-            <AccountDropdownMenuItem
-              key={account.id}
-              name={account.name}
-              handleClick={() => handleAccountClick(account.id)}
-            />
-          ))}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {accountsDropdownOptions.map((item) => (
-            <DropdownMenuItem
-              key={item.name}
-              className="text-xs"
-              onClick={() => {
-                if (item.name === "Create Account") {
-                  onCreateAccount();
-                }
-              }}
-            >
-              {item.name}
-              <DropdownMenuShortcut>{item.icon}</DropdownMenuShortcut>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 const ChatSidebarGeneralGroupContent = ({
   accountId,
@@ -152,9 +90,9 @@ const ChatSidebarGeneralGroupContent = ({
       <SidebarGroupContent>
         <SidebarMenu>
           {sidebarItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
+            <SidebarMenuItem key={item.title} className="">
               <SidebarMenuButton asChild>
-                <NavLink to={`/${accountId}`}>
+                <NavLink to={`/a/${accountId}`}>
                   <item.icon />
                   <span>{item.title}</span>
                 </NavLink>
@@ -167,23 +105,102 @@ const ChatSidebarGeneralGroupContent = ({
   );
 };
 
+const ChatSidebarHeader = ({
+  onAccountClick,
+  onShowNewCreateAccountModal,
+  onCreateAccount,
+}: {
+  onAccountClick: (accountId: string) => void;
+  onShowNewCreateAccountModal: (value: boolean) => void;
+  onCreateAccount: () => void;
+}) => {
+  const { accountId } = useParams();
+  const { data: accountsList } = useListAccounts({});
+  const { data: account } = useAccount({
+    queryParams: { accountId: accountId! },
+  });
+
+  if (accountsList?.length === 0) {
+    onShowNewCreateAccountModal(true);
+  }
+
+  const accountsDropdownOptions = [
+    {
+      name: "Create Workspace",
+      icon: <CirclePlus />,
+    },
+    {
+      name: "Join Workspace",
+      icon: <UserRoundPlus />,
+    },
+  ];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SidebarMenuButton
+          size="lg"
+          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+        >
+          <AccountSelectButton accountName={account?.name || ""} />
+        </SidebarMenuButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="dropdown-content-width-full">
+        <DropdownMenuGroup>
+          {accountsList?.map((account) => (
+            <AccountDropdownMenuItem
+              key={account.id}
+              name={account.name}
+              handleClick={() => onAccountClick(account.id)}
+            />
+          ))}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          {accountsDropdownOptions.map((item) => (
+            <DropdownMenuItem
+              key={item.name}
+              className="text-xs"
+              onClick={() => {
+                if (item.name === "Create Workspace") {
+                  onCreateAccount();
+                }
+              }}
+            >
+              {item.name}
+              <DropdownMenuShortcut>{item.icon}</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export const ChatSidebarSessionsGroupContent = ({
   sessionsData,
-  handleSessionClick,
+  onSessionClick,
 }: {
-  sessionsData: Session[];
-  handleSessionClick: (sessionId: string) => void;
+  sessionsData: (Session & Base)[];
+  onSessionClick: (sessionId: string) => void;
 }) => {
+  const { sessionId } = useParams();
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>HISTORY</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {sessionsData.map((item) => (
-            <SidebarMenuItem key={item.title}>
+            <SidebarMenuItem
+              key={item.id}
+              className={`${
+                sessionId === item.id ? "bg-neutral-200 rounded-md" : ""
+              }`}
+            >
               <SidebarMenuButton
                 asChild
-                onClick={() => handleSessionClick(item.id)}
+                onClick={() => onSessionClick(item.id)}
               >
                 <span>{item.title}</span>
               </SidebarMenuButton>
@@ -192,6 +209,45 @@ export const ChatSidebarSessionsGroupContent = ({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
+  );
+};
+
+const ChatSidebarUserDropdown = () => {
+  const { user, logout } = useAuth();
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src="" alt="" />
+                <AvatarFallback className="rounded-lg">
+                  {(
+                    user?.profile?.first_name?.[0] ||
+                    user?.email?.[0] ||
+                    "U"
+                  ).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">
+                  {user?.profile?.first_name || user?.email || "User"}
+                </span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="dropdown-content-width-full">
+            <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 };
 
@@ -306,89 +362,104 @@ const Header = () => {
   );
 };
 
-const ChatSidebarUserDropdown = () => {
-  const { user, logout } = useAuth();
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src="" alt="" />
-                <AvatarFallback className="rounded-lg">
-                  {(
-                    user?.profile?.first_name?.[0] ||
-                    user?.email?.[0] ||
-                    "U"
-                  ).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {user?.profile?.first_name || user?.email || "User"}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="dropdown-content-width-full">
-            <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  );
-};
-
-const ChatLayout = () => {
-  const { accountId } = useLoaderData() as Awaited<
-    ReturnType<ReturnType<typeof loader>>
-  >;
-  // const user = useAuth();
+export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
   const navigate = useNavigate();
-  const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
+  const { accountId } = useParams();
 
-  const { data: sessions } = useSessions({
-    queryParams: {
-      accountId,
+  const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
+  const [forceCreateNewAccount, setForceCreateNewAccount] = useState(false);
+
+  const { data: account, isLoading: isAccountLoading } = useAccount({
+    queryParams: { accountId: accountId! },
+    queryConfig: {
+      enabled: !!accountId,
     },
   });
 
+  const { data: accounts, isLoading: isAccountsLoading } = useListAccounts({
+    queryConfig: {
+      enabled: !!account || isSetup,
+    },
+  });
+
+  const { data: sessions } = useSessions({
+    queryParams: {
+      accountId: accountId!,
+    },
+    queryConfig: {
+      enabled: !!accountId,
+    },
+  });
+
+  // handle setup mode - redirect to first account if available, otherwise show create modal
+  useEffect(() => {
+    if (isSetup && !isAccountsLoading) {
+      if (accounts && accounts.length > 0) {
+        console.log("navigating to first account", accounts[0].id);
+        navigate(`/a/${accounts[0].id}`);
+      } else {
+        // Only show modal if there are no accounts to redirect to
+        setForceCreateNewAccount(true);
+        setShowCreateAccountModal(true);
+      }
+    }
+  }, [isSetup, accounts, isAccountsLoading, navigate]);
+
+  // handle non-setup mode - ensure we have proper state
+  useEffect(() => {
+    if (!isSetup) {
+      setForceCreateNewAccount(false);
+      setShowCreateAccountModal(false);
+    }
+  }, [isSetup]);
+
+  // handle account not found --> go to the first account or setup
+  useEffect(() => {
+    if (isSetup) return;
+    if (isAccountLoading) return;
+    if (!account) {
+      if (accounts && accounts.length > 0) {
+        navigate(`/a/${accounts[0].id}`);
+      } else {
+        navigate("/setup");
+      }
+    }
+  }, [account, accounts, isSetup, isAccountLoading, navigate]);
+
+  console.log("rerendering");
+  // Show loading state during setup when accounts are being loaded
+  if (isSetup && isAccountsLoading) {
+    return <div>Loading...</div>;
+  }
+
+  const handleAccountCreated = (account: any) => {
+    navigate(`/a/${account.id}`);
+  };
+
   const handleAccountClick = (accountId: string) => {
-    navigate(`/${accountId}`);
+    navigate(`/a/${accountId}`);
   };
-
-  const handleSessionClick = (sessionId: string) => {
-    navigate(`/${accountId}/s/${sessionId}`);
-  };
-
   const handleCreateAccount = () => {
     setShowCreateAccountModal(true);
   };
-
-  const handleAccountCreated = (account: any) => {
-    navigate(`/${account.id}`);
+  const handleSessionClick = (sessionId: string) => {
+    navigate(`/a/${accountId!}/s/${sessionId}`);
   };
-
   return (
     <>
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader>
             <ChatSidebarHeader
-              handleAccountClick={handleAccountClick}
+              onShowNewCreateAccountModal={() => {}}
+              onAccountClick={handleAccountClick}
               onCreateAccount={handleCreateAccount}
             />
           </SidebarHeader>
           <SidebarContent>
-            <ChatSidebarGeneralGroupContent accountId={accountId} />
+            <ChatSidebarGeneralGroupContent accountId={accountId!} />
             <ChatSidebarSessionsGroupContent
-              handleSessionClick={handleSessionClick}
+              onSessionClick={handleSessionClick}
               sessionsData={sessions || []}
             />
           </SidebarContent>
@@ -404,14 +475,12 @@ const ChatLayout = () => {
           </div>
         </SidebarInset>
       </SidebarProvider>
-
       <CreateAccountModal
         isOpen={showCreateAccountModal}
         onClose={() => setShowCreateAccountModal(false)}
         onSuccess={handleAccountCreated}
+        isForced={forceCreateNewAccount}
       />
     </>
   );
 };
-
-export { ChatLayout, loader };
