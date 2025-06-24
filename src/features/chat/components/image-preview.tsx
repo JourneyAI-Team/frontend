@@ -19,8 +19,8 @@ export const ImagePreview = ({
   onClick,
   onClose,
   aspectRatio = "square",
-  showCloseButton = true,
-}: FilePreviewProps) => {
+}: // showCloseButton = true,
+FilePreviewProps) => {
   const aspectRatioClasses = {
     square: "aspect-square",
     video: "aspect-video",
