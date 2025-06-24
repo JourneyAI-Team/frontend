@@ -2,7 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/libs/axios";
 import { type QueryConfig } from "@/libs/react-query";
-import type { Account } from "@/types/api";
+import type { Account } from "@/types/models";
 
 type UseAccountQueryParams = {
   accountId: string;
