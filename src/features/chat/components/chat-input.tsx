@@ -10,14 +10,14 @@ import { FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useWebSocketConnection } from "@/hooks/use-ws";
 import type { Message } from "@/types/models";
+import { SUPPORTED_FILE_EXTENSIONS } from "@/utils/vars";
 
 import { ImagePreview } from "./image-preview";
 import { FilePreview } from "./file-preview";
 import { useFilesUpload } from "../api/upload-files";
-import { SUPPORTED_FILE_EXTENSIONS, SUPPORTED_MIME_TYPES } from "@/utils/vars";
 
 const chatInputSchema = z.object({
-  content: z.string().min(1, "Message cannot be empty"),
+  content: z.string(),
 });
 export type ChatInputType = z.infer<typeof chatInputSchema>;
 
@@ -73,7 +73,6 @@ export const ChatInput = ({
     const filesToUpload = e.target.files;
     const newFiles = Array.from(filesToUpload || []);
 
-    console.log(newFiles);
     // Filter out invalid files
     const validFiles = newFiles.filter((f) => {
       const ext = f.name.split(".").pop()?.toLowerCase();
@@ -117,10 +116,13 @@ export const ChatInput = ({
   };
 
   const handleSendMessage = (data: ChatInputType) => {
+    const message = data.content.trim();
+    if (message === "" && files.length === 0) return;
+
     sendJsonMessage({
       event: "ingest_message",
       data: {
-        content: data.content.trim(),
+        content: message,
         session_id: sessionId,
       },
     });
