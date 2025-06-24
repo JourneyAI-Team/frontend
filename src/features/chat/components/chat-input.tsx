@@ -11,6 +11,9 @@ import { useWebSocketConnection } from "@/hooks/use-ws";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Message } from "@/types/models";
 
+// Debug: Set to true to disable image uploads
+const DEBUG_DISABLE_IMAGES = true;
+
 const chatInputSchema = z.object({
   content: z.string().min(1, "Message cannot be empty"),
 });
@@ -64,7 +67,13 @@ export const ChatInput = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const _files = Array.from(e.target.files || []);
-    setFiles([..._files, ...files]);
+
+    // Filter out images if debug mode is enabled
+    const filteredFiles = DEBUG_DISABLE_IMAGES
+      ? _files.filter((file) => !file.type.startsWith("image/"))
+      : _files;
+
+    setFiles([...filteredFiles, ...files]);
   };
 
   const handleClick = () => {
@@ -84,6 +93,12 @@ export const ChatInput = ({
       },
     });
     onSendMessage(data);
+  };
+
+  const getAcceptedFileTypes = () => {
+    return DEBUG_DISABLE_IMAGES
+      ? ".pdf,.doc,.docx,.txt"
+      : "image/*,.pdf,.doc,.docx,.txt";
   };
 
   return (
@@ -171,7 +186,7 @@ export const ChatInput = ({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept={"image/*,.pdf,.doc,.docx,.txt"}
+                    accept={getAcceptedFileTypes()}
                     multiple={true}
                     onChange={handleInputChange}
                     className="hidden"
