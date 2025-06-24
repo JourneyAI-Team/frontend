@@ -1,48 +1,65 @@
 import {
   X,
   FileText,
-  Archive,
   File,
-  ImageIcon,
-  Music,
-  Video,
+  FileCode2,
+  FileJson,
+  FileTerminal,
 } from "lucide-react";
-import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
+
+import CircularProgress from "./circular-progress";
 
 interface FileThumbnailProps {
   file: File;
   onClose?: () => void;
   onClick?: () => void;
   className?: string;
+  isUploading?: boolean;
+  uploadProgress?: number;
 }
 
-const getFileIcon = (fileType: string, fileName: string) => {
+const getFileIcon = (fileName: string) => {
   const extension = fileName.split(".").pop()?.toLowerCase();
 
-  if (fileType.startsWith("image/")) {
-    return <ImageIcon size={24} />;
-  }
+  // if (fileType.startsWith("image/")) {
+  //   return <ImageIcon size={24} />;
+  // }
 
-  if (fileType.startsWith("audio/")) {
-    return <Music size={24} />;
-  }
+  // if (fileType.startsWith("audio/")) {
+  //   return <Music size={24} />;
+  // }
 
-  if (fileType.startsWith("video/")) {
-    return <Video size={24} />;
-  }
+  // if (fileType.startsWith("video/")) {
+  //   return <Video size={24} />;
+  // }
 
   switch (extension) {
     case "pdf":
       return <FileText size={24} />;
     case "txt":
+    case "tex":
     case "doc":
     case "docx":
+    case "md":
       return <FileText size={24} />;
-    case "zip":
-    case "rar":
-    case "7z":
-      return <Archive size={24} />;
+    case "js":
+    case "ts":
+    case "html":
+    case "css":
+    case "c":
+    case "cpp":
+    case "cs":
+    case "java":
+    case "php":
+    case "py":
+    case "rb":
+      return <FileCode2 size={24} />;
+    case "sh":
+      return <FileTerminal size={24} />;
+    case "json":
+      return <FileJson size={24} />;
     default:
       return <File size={24} />;
   }
@@ -58,34 +75,41 @@ const getIconColor = (fileName: string) => {
 
   switch (extension) {
     case "pdf":
-      return "bg-red-500";
     case "txt":
+    case "tex":
     case "doc":
     case "docx":
+    case "md":
+      return "bg-red-500";
+    case "js":
+    case "ts":
+    case "html":
+    case "css":
+    case "c":
+    case "cpp":
+    case "cs":
+    case "java":
+    case "php":
+    case "py":
+    case "rb":
       return "bg-blue-500";
-    case "zip":
-    case "rar":
-    case "7z":
-      return "bg-yellow-500";
-    case "mp3":
-    case "wav":
-    case "flac":
+    case "sh":
       return "bg-purple-500";
-    case "mp4":
-    case "avi":
-    case "mov":
-      return "bg-green-500";
+    case "json":
+      return "bg-yellow-500";
     default:
-      return "bg-pink-500";
+      return "bg-gray-500";
   }
 };
 
-export default function FilePreview({
+export const FilePreview = ({
   file,
   onClose,
   onClick,
   className,
-}: FileThumbnailProps) {
+  isUploading = false,
+  uploadProgress = 0,
+}: FileThumbnailProps) => {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -111,7 +135,28 @@ export default function FilePreview({
           getIconColor(file.name)
         )}
       >
-        {getFileIcon(file.type, file.name)}
+        {isUploading ? (
+          <div className="flex items-center justify-center rounded-lg">
+            <CircularProgress
+              progress={uploadProgress}
+              size={32}
+              strokeWidth={2}
+            />
+          </div>
+        ) : (
+          getFileIcon(file.name)
+        )}
+
+        {/* Uploading overlay on icon */}
+        {/* {isUploading && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+            <CircularProgress
+              progress={uploadProgress}
+              size={32}
+              strokeWidth={2}
+            />
+          </div>
+        )} */}
       </div>
 
       {/* File Info */}
@@ -141,4 +186,4 @@ export default function FilePreview({
       )}
     </div>
   );
-}
+};

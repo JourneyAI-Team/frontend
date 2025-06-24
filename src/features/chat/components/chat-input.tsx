@@ -1,21 +1,26 @@
 import { Paperclip, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+
+import { toast } from "sonner";
 
 import { Form } from "@/components/ui/react-hook-form-wrapper";
 import { FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { ImagePreview } from "./image-preview";
-import FilePreview from "./file-preview";
 import { useWebSocketConnection } from "@/hooks/use-ws";
-import { useQueryClient } from "@tanstack/react-query";
 import type { Message } from "@/types/models";
+import { SUPPORTED_FILE_EXTENSIONS } from "@/utils/vars";
+
+import { ImagePreview } from "./image-preview";
+import { FilePreview } from "./file-preview";
+import { useFilesUpload } from "../api/upload-files";
 
 // Debug: Set to true to disable image uploads
 const DEBUG_DISABLE_IMAGES = true;
 
 const chatInputSchema = z.object({
-  content: z.string().min(1, "Message cannot be empty"),
+  content: z.string(),
 });
 export type ChatInputType = z.infer<typeof chatInputSchema>;
 
@@ -65,15 +70,42 @@ export const ChatInput = ({
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const uploadMutation = useFilesUpload(sessionId);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const _files = Array.from(e.target.files || []);
+    const filesToUpload = e.target.files;
+    const newFiles = Array.from(filesToUpload || []);
 
-    // Filter out images if debug mode is enabled
-    const filteredFiles = DEBUG_DISABLE_IMAGES
-      ? _files.filter((file) => !file.type.startsWith("image/"))
-      : _files;
+    // Filter out invalid files
+    const validFiles = newFiles.filter((f) => {
+      const ext = f.name.split(".").pop()?.toLowerCase();
+      return SUPPORTED_FILE_EXTENSIONS.has(`.${ext}`);
+    });
+    const invalidFiles = newFiles.filter((f) => {
+      const ext = f.name.split(".").pop()?.toLowerCase();
+      return !SUPPORTED_FILE_EXTENSIONS.has(`.${ext}`);
+    });
 
-    setFiles([...filteredFiles, ...files]);
+    if (invalidFiles.length > 0) {
+      toast.error("Invalid file type", {
+        description: "Invalid files will not be uploaded.",
+      });
+    }
+
+    if (validFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
+
+    setFiles((prev) => [...validFiles, ...prev]);
+
+    validFiles.forEach((_file) => {
+      const formData = new FormData();
+      formData.append("files", _file);
+      uploadMutation.mutation.mutate({ files: formData, fileName: _file.name });
+    });
+
+    e.target.value = "";
   };
 
   const handleClick = () => {
@@ -82,17 +114,25 @@ export const ChatInput = ({
 
   const handleRemoveFile = (file: File) => {
     setFiles(files.filter((f) => f !== file));
+
+    uploadMutation.handleRemoveFile(file.name);
   };
 
   const handleSendMessage = (data: ChatInputType) => {
+    const message = data.content.trim();
+    if (message === "" && files.length === 0) return;
+
     sendJsonMessage({
       event: "ingest_message",
       data: {
-        content: data.content.trim(),
+        content: message,
         session_id: sessionId,
       },
     });
-    onSendMessage(data);
+    // Clear all files
+    uploadMutation.handleRemoveAllFiles();
+    setFiles([]);
+    onSendMessage(data, files);
   };
 
   const getAcceptedFileTypes = () => {
@@ -102,7 +142,7 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="relative rounded-3xl! bg-background border rounded-lg overflow-hidden shadow-sm pr-2 pt-2">
+    <div className="relative rounded-3xl! bg-background border overflow-hidden shadow-sm pr-2 pt-2">
       {/* File preview section */}
       <div className="mx-3 overflow-x-auto hide-scrollbar mb-2">
         <div className="flex gap-2 flex-row flex-nowrap w-max">
@@ -110,10 +150,11 @@ export const ChatInput = ({
             files.map((file, index) => (
               <div key={`${file.name}-${index}`} className="flex-shrink-0">
                 {file.type.includes("image") ? (
+                  // TODO: For future image support
                   <ImagePreview
                     src={URL.createObjectURL(file)}
                     alt={file.name}
-                    onClick={() => console.log("Image clicked!")}
+                    // onClick={() => console.log("Image clicked!")}
                     onClose={() => handleRemoveFile(file)}
                     showCloseButton={true}
                     aspectRatio="square"
@@ -123,7 +164,10 @@ export const ChatInput = ({
                   <FilePreview
                     file={file}
                     onClose={() => handleRemoveFile(file)}
-                    onClick={() => console.log("click")}
+                    isUploading={
+                      uploadMutation.uploadProgressMap[file.name] < 100
+                    }
+                    uploadProgress={uploadMutation.uploadProgressMap[file.name]}
                   />
                 )}
               </div>
@@ -150,7 +194,7 @@ export const ChatInput = ({
                 <FormItem>
                   <FormControl>
                     <textarea
-                      className="w-full border-none px-4 pt-3 pb-0! mb-10! placeholder:text-muted-foreground focus-visible:ring-0 focus:outline-none resize-none mb-12"
+                      className="w-full border-none px-4 pt-3 pb-0! mb-10! placeholder:text-muted-foreground focus-visible:ring-0 focus:outline-none resize-none"
                       placeholder="Ask Journey AI or type @ to use an AI Extension"
                       rows={1}
                       {...field}

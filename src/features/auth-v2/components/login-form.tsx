@@ -24,13 +24,11 @@ export const LoginForm = () => {
   const loginMutation = useLogin({
     mutationConfig: {
       onSuccess: (data) => {
-        console.log("Login successful:", data);
         auth.handleSetAuthTokens(data);
         auth.handleSaveAuthTokens(data);
       },
       onError: (error) => {
         const errMessage = resolveAxiosError(error);
-        console.log("Login error:", error);
         setErrorMessage(errMessage);
       },
     },

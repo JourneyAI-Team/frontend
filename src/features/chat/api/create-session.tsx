@@ -1,6 +1,6 @@
 import { api } from "@/libs/axios";
 import { type MutationConfig } from "@/libs/react-query";
-import type { Session } from "@/types/api";
+import type { Session } from "@/types/models";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -15,8 +15,9 @@ export type CreateSessionData = z.infer<typeof createSessionInput> & {
   assistant_id: string;
 };
 
-export const createSessionApi = (data: CreateSessionData): Promise<Session> =>
-  api.post("/session", data);
+export const createSessionApi = (
+  data: CreateSessionData
+): Promise<Session & { id: string }> => api.post("/session", data);
 
 type UseCreateSessionMutationConfig = {
   mutationConfig?: MutationConfig<typeof createSessionApi>;

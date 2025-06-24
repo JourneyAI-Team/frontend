@@ -50,12 +50,13 @@ import {
 } from "@/features/chat/api/get-account";
 import { useListAccounts } from "@/features/chat/api/list-accounts";
 
-import { useSessions } from "@/features/chat/api/get-sessions";
+// import { useSessions } from "@/features/chat/api/get-sessions";
+import { useListSessions } from "@/features/chat/api/list-sessions";
 import { AccountSelectButton } from "@/features/chat/components/accounts-select-button";
 import { AccountDropdownMenuItem } from "@/features/chat/components/account-dropdown-menu-item";
 import { GptModelSelectButton } from "@/features/chat/components/gpt-model-select-button";
 
-import type { Base, Session } from "@/types/models";
+import type { Account, Base, Session } from "@/types/models";
 
 export const loader =
   (queryClient: QueryClient) =>
@@ -382,9 +383,11 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
     },
   });
 
-  const { data: sessions } = useSessions({
+  const { data: sessions } = useListSessions({
     queryParams: {
-      accountId: accountId!,
+      query: {
+        account_id: accountId!,
+      },
     },
     queryConfig: {
       enabled: !!accountId,
@@ -395,7 +398,6 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
   useEffect(() => {
     if (isSetup && !isAccountsLoading) {
       if (accounts && accounts.length > 0) {
-        console.log("navigating to first account", accounts[0].id);
         navigate(`/a/${accounts[0].id}`);
       } else {
         // Only show modal if there are no accounts to redirect to
@@ -426,13 +428,12 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
     }
   }, [account, accounts, isSetup, isAccountLoading, navigate]);
 
-  console.log("rerendering");
   // Show loading state during setup when accounts are being loaded
   if (isSetup && isAccountsLoading) {
     return <div>Loading...</div>;
   }
 
-  const handleAccountCreated = (account: any) => {
+  const handleAccountCreated = (account: Account & Base) => {
     navigate(`/a/${account.id}`);
   };
 

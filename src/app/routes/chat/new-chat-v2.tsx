@@ -118,7 +118,6 @@ export const NewChatV2 = () => {
   const { accountId } = useParams();
   const { user } = useAuth();
 
-  console.log("newchatv2 rerendering");
   const [selectedCategory, setSelectedCategory] = useState<
     string | "all" | "favorites"
   >("all");
