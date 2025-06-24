@@ -5,6 +5,7 @@ import {
   useState,
   startTransition,
   memo,
+  useImperativeHandle,
 } from "react";
 import { useLoaderData } from "react-router";
 import { useWebSocketConnection } from "@/hooks/use-ws";
@@ -78,15 +79,7 @@ const RenderEvent = ({
     if (tokens.length > 0) {
       return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
     } else {
-      return (
-        <div className="flex w-full justify-start">
-          <div className="flex flex-col space-y-1 max-w-[80%]">
-            <div className="px-4 py-3">
-              <LoadingDots className="text-gray-400" />
-            </div>
-          </div>
-        </div>
-      );
+      return <span />;
     }
   }
 
@@ -118,8 +111,10 @@ const EventResponseStream = ({
         if (parsedEvent.type === "token") {
           setTokens((prev) => [...prev, parsedEvent.data]);
         }
+        if (parsedEvent.type === "message") {
+          onDoneStreaming(parsedEvent.data);
+        }
         if (parsedEvent.type === "done") {
-          onDoneStreaming(tokens.join(""));
           setTokens([]);
         }
       }
@@ -190,8 +185,8 @@ export const Chat = () => {
     (chatText: ChatInputType, files?: File[]) => {
       const textContent = chatText.content.trim();
       if (!textContent) return;
-
       setNewUserChat(textContent);
+      setFullResponse(null);
     },
     []
   );
@@ -210,8 +205,8 @@ export const Chat = () => {
       );
     });
     // clear the temporary UI bits
-    setNewUserChat(null);
-    setFullResponse(null);
+    // setNewUserChat(null);
+    // setFullResponse(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullResponse, queryClient, accountId, sessionId]);
 
@@ -262,6 +257,7 @@ export const Chat = () => {
 
   const handleDoneStreaming = (fullResponse: string) => {
     setFullResponse(fullResponse);
+    // newMessageListRef.current?.addNewMessage(false, fullResponse);
   };
 
   return (
@@ -274,7 +270,6 @@ export const Chat = () => {
           {/* Render past messages */}
           <MessageList accountId={accountId} sessionId={sessionId} />
           {/* Render streaming response */}
-
           {newUserChat && (
             <EventResponseStream onDoneStreaming={handleDoneStreaming} />
           )}
