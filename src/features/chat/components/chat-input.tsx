@@ -122,12 +122,31 @@ export const ChatInput = ({
     const message = data.content.trim();
     if (message === "" && files.length === 0) return;
 
+    // Create attachment metadata from files
+    const attachments = files.map((file) => ({
+      type: "file",
+      name: file.name,
+      mimetype: file.type,
+      size: file.size,
+    }));
+
+    const messageData: {
+      content: string;
+      session_id: string;
+      attachments?: typeof attachments;
+    } = {
+      content: message,
+      session_id: sessionId,
+    };
+
+    // Only include attachments if there are files
+    if (attachments.length > 0) {
+      messageData.attachments = attachments;
+    }
+
     sendJsonMessage({
       event: "ingest_message",
-      data: {
-        content: message,
-        session_id: sessionId,
-      },
+      data: messageData,
     });
     // Clear all files
     uploadMutation.handleRemoveAllFiles();
