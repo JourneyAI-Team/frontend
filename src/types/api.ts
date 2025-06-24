@@ -64,11 +64,13 @@ export type AgentResponseAgentSwitchEvent = {
 
 export type AgentResponseMessageOutputEvent = {
   type: "message";
-  message: {
+  status: "completed";
+  role: "assistant";
+  content: {
+    annotations: unknown[];
     text: string;
-    role: string;
-    id: string;
-  };
+    type: "output_text";
+  }[];
 };
 
 export type AgentResponseToolCallEvent = {
@@ -76,7 +78,7 @@ export type AgentResponseToolCallEvent = {
   tool_call: {
     id: string;
     name: string;
-    args: Record<string, any>;
+    args: Record<string, unknown>;
   };
 };
 
