@@ -34,9 +34,16 @@ export const ChatBubble = memo(
               </p>
             ) : (
               <div className="markdown-content">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {content}
-                </ReactMarkdown>
+                <span>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {content}
+                  </ReactMarkdown>
+                  {isStreaming && (
+                    <span className="inline-block w-0.5 h-4 bg-gray-400 ml-1 animate-text-cursor">
+                      |
+                    </span>
+                  )}
+                </span>
               </div>
             )}
           </Card>
