@@ -7,7 +7,17 @@ import { Card, CardAction, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { Star } from "lucide-react";
+import {
+  Star,
+  Search,
+  FileText,
+  TrendingUp,
+  PenTool,
+  Phone,
+  BarChart3,
+  Calendar,
+  Sparkles,
+} from "lucide-react";
 
 import {
   useListAssistants,
@@ -42,6 +52,26 @@ const CustomTabsTrigger = ({
       {capitalize(value)}
     </TabsTrigger>
   );
+};
+
+/**
+ * Returns the appropriate icon component for an assistant based on its internal_name.
+ *
+ * @param internal_name - The internal identifier for the assistant
+ * @returns The corresponding Lucide React icon component
+ */
+const getIconForAssistant = (internal_name: string) => {
+  const iconMap: Record<string, any> = {
+    new_client_research_prep: Search,
+    new_client_account_plan: FileText,
+    lookalike_leads: TrendingUp,
+    social_media_writer: PenTool,
+    sales_call_prep: Phone,
+    annual_report_summarizer: BarChart3,
+    meetings_made_easy: Calendar,
+  };
+
+  return iconMap[internal_name] || Sparkles; // Default to Sparkles if no match
 };
 
 export const LoadingAssistantCard = () => {
@@ -81,6 +111,8 @@ export const AssistantCard = ({
     });
   };
 
+  const IconComponent = getIconForAssistant(assistant.internal_name);
+
   return (
     <Card className="bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md hover:cursor-pointer relative">
       <Button
@@ -97,7 +129,9 @@ export const AssistantCard = ({
       <CardAction onClick={() => handleClick(assistant.id)}>
         <CardContent className="pr-14">
           <div className="flex flex-row items-center gap-4">
-            <div className="flex-shrink-0 w-15 h-15 bg-gray-100 rounded-xl flex items-center justify-center"></div>
+            <div className="flex-shrink-0 w-15 h-15 bg-gray-100 rounded-xl flex items-center justify-center">
+              <IconComponent className="w-6 h-6 text-gray-600" />
+            </div>
             <div className="flex flex-col text-left gap-2">
               <h3 className="text-lg font-semibold text-gray-900">
                 {assistant.name}
