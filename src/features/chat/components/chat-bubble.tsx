@@ -13,7 +13,7 @@ export const ChatBubble = memo(
   ({
     content,
     isUser,
-    isStreaming = false,
+    // isStreaming = false,
     attachments = [],
   }: {
     content: string;
@@ -77,11 +77,6 @@ export const ChatBubble = memo(
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {content}
                 </ReactMarkdown>
-                {isStreaming && (
-                  <span className="inline-block w-0.5 h-4 bg-gray-400 ml-1 animate-text-cursor">
-                    |
-                  </span>
-                )}
               </div>
             )}
           </Card>
