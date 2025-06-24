@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { ChatBody } from "./routes/chat/chat-body";
 
-import { ChatMessages } from "./routes/chat/chat-messages-v2";
+import { Chat } from "./routes/chat/chat-messages-v2";
 import { NewChatV2 } from "./routes/chat/new-chat-v2";
 import { ErrorPage } from "./routes/error";
 import { AuthPage } from "./routes/auth/auth";
@@ -48,7 +48,7 @@ const createAppRouter = (queryClient: QueryClient) =>
           path: "/a/:accountId/s/:sessionId",
           element: (
             <ChatBody>
-              <ChatMessages />
+              <Chat />
             </ChatBody>
           ),
           loader: chatMessagesLoader(queryClient),
