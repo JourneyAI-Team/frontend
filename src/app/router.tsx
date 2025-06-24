@@ -3,13 +3,12 @@ import { useMemo } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { ChatBody } from "./routes/chat/chat-body";
 
-import {
-  ChatMessages,
-  loader as chatMessagesLoader,
-} from "./routes/chat/chat-messages-v2";
+import { ChatMessages } from "./routes/chat/chat-messages-v2";
 import { NewChatV2 } from "./routes/chat/new-chat-v2";
 import { ErrorPage } from "./routes/error";
 import { AuthPage } from "./routes/auth/auth";
+
+import { loader as chatMessagesLoader } from "@/features/chat/loaders/chat-messages-loader";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { ChatLayout } from "@/components/layout/chat-layout";
