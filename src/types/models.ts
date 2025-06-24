@@ -72,6 +72,13 @@ export type Contact = {
 
 export type SenderType = "assistant" | "user";
 
+export type AttachmentMetadata = {
+  type: string;
+  name: string | null;
+  mimetype: string | null;
+  size: number | null;
+};
+
 export type InputMessageSchema = {
   content: string;
 };
@@ -103,6 +110,7 @@ export type Message<TMessageOutput = MessageOutputBase> = {
   output: TMessageOutput | null;
   input: InputMessageSchema | null;
   sender: SenderType;
+  attachments: AttachmentMetadata[];
   user_id: string;
   organization_id: string;
   assistant_id: string;

@@ -35,7 +35,13 @@ const ChatBubbles = ({ message }: { message: Message }) => {
   if (isUser) {
     const content = message.input?.content;
     if (!content) return null;
-    return <ChatBubble content={content} isUser={true} />;
+    return (
+      <ChatBubble
+        content={content}
+        isUser={true}
+        attachments={message.attachments}
+      />
+    );
   }
 
   // Handle rendering of assistant message from output
@@ -52,7 +58,13 @@ const ChatBubbles = ({ message }: { message: Message }) => {
   const content = contentObj.content.find((c) => c.type === "output_text");
   if (!content) return null;
 
-  return <ChatBubble content={content.text} isUser={false} />;
+  return (
+    <ChatBubble
+      content={content.text}
+      isUser={false}
+      attachments={message.attachments}
+    />
+  );
 };
 
 const RenderEvent = ({
@@ -245,6 +257,7 @@ export const Chat = () => {
           content: newUserChat || "",
         },
         output: null,
+        attachments: [],
       };
     }
     return {
@@ -257,6 +270,7 @@ export const Chat = () => {
         type: "message",
         content: [{ type: "output_text", text: fullResponse }],
       },
+      attachments: [],
     };
   };
 
