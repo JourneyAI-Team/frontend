@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  startTransition,
+  memo,
+} from "react";
 import { useLoaderData } from "react-router";
 import { useWebSocketConnection } from "@/hooks/use-ws";
 
@@ -47,52 +54,6 @@ const ChatBubbles = ({ message }: { message: Message }) => {
 
   return <ChatBubble content={content.text} isUser={false} />;
 };
-
-// TODO: I think this better return Components instead of strings
-// const handleEventStream = (
-//   event: BaseEventResponse
-// ): {
-//   event: Events;
-//   data: string;
-//   type: EventDataType;
-// } => {
-//   // Handle agent response token stream
-
-//   if (event.event === "agent_response") {
-//     const parsed = {
-//       event: event.event,
-//     }
-//     // Get the data
-//     const agentResponseData = event.data;
-//     // Check the type of the data
-
-//     // If it's a token, then it will render the word by word like a typewriter, delta returns the word
-//     if (agentResponseData.type === "token") {
-//       const data = agentResponseData as AgentResponseTokenStreamEvent;
-//       return {
-//         event: event.event,
-//         data: data.delta,
-//         type: agentResponseData.type,
-//       };
-//     }
-
-//     // If it's a message, then TODO, for now return null
-//     // if (agentResponseData.type === "message") {
-//     //   // const data = agentResponseData as AgentResponseMessageOutputEvent;
-//     //   // return data.message;
-//     //   return null;
-//     // }
-
-//     if (agentResponseData.type === "done") {
-//       return {
-//         event:
-//       };
-//     }
-//   }
-
-//   // Ignore other events for now and return null
-//   return null;
-// };
 
 const RenderEvent = ({
   event,
@@ -170,7 +131,44 @@ const EventResponseStream = ({
   return <RenderEvent tokens={tokens.join("")} event={curEvent} />;
 };
 
-export const ChatMessages = () => {
+const MessageList = memo(
+  ({ accountId, sessionId }: { accountId: string; sessionId: string }) => {
+    // Fetch past messages from database
+    const { data: messages } = useListMessages({
+      queryParams: {
+        query: {
+          account_id: accountId,
+          session_id: sessionId,
+        },
+      },
+    });
+
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const hasInitiallyScrolled = useRef(false);
+
+    useEffect(() => {
+      hasInitiallyScrolled.current = false;
+    }, [sessionId]);
+
+    useEffect(() => {
+      if (messages?.length && !hasInitiallyScrolled.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        hasInitiallyScrolled.current = true;
+      }
+    }, [messages]);
+
+    return (
+      <>
+        {messages?.map((message) => (
+          <ChatBubbles key={message.id} message={message} />
+        ))}
+        <div ref={messagesEndRef} />
+      </>
+    );
+  }
+);
+
+export const Chat = () => {
   const { accountId, sessionId } = useLoaderData() as Awaited<
     ReturnType<ReturnType<typeof loader>>
   >;
@@ -181,38 +179,6 @@ export const ChatMessages = () => {
   const [fullResponse, setFullResponse] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const hasInitiallyScrolled = useRef(false);
-  // const [chatContainerHeight, setChatContainerHeight] = useState(320);
-  // const chatContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Fetch past messages from database
-  const { data: messages } = useListMessages({
-    queryParams: {
-      query: {
-        account_id: accountId!,
-        session_id: sessionId!,
-      },
-    },
-  });
-
-  // Reset scroll tracking when session changes
-  useEffect(() => {
-    hasInitiallyScrolled.current = false;
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (messages?.length && !hasInitiallyScrolled.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-      hasInitiallyScrolled.current = true;
-    }
-  }, [messages]);
-
-  // const increaseContainerHeight = () => {
-  //   const el = chatContainerRef.current;
-  //   if (!el) return;
-  //   const h = parseInt(getComputedStyle(el).height, 10);
-  //   el.style.height = `${h + 320}px`;
-  // };
 
   // Auto-scroll when messages or newMessage changes
   useEffect(() => {
@@ -224,6 +190,7 @@ export const ChatMessages = () => {
     (chatText: ChatInputType, files?: File[]) => {
       const textContent = chatText.content.trim();
       if (!textContent) return;
+
       setNewUserChat(textContent);
     },
     []
@@ -236,17 +203,17 @@ export const ChatMessages = () => {
     // Build a Message object consistent with the schema
     const newMsg = buildMessageSchema(false);
 
-    queryClient.setQueryData<ListMessagesResponse[]>(
-      // same key used in useListMessages
-      ["messages", { account_id: accountId, session_id: sessionId }],
-      (old = []) => [...old, newMsg]
-    );
-
+    startTransition(() => {
+      queryClient.setQueryData<Message[]>(
+        ["messages", { account_id: accountId, session_id: sessionId }],
+        (old = []) => [...old, newMsg]
+      );
+    });
     // clear the temporary UI bits
     setNewUserChat(null);
     setFullResponse(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullResponse]);
+  }, [fullResponse, queryClient, accountId, sessionId]);
 
   useEffect(() => {
     if (!newUserChat) return;
@@ -259,8 +226,7 @@ export const ChatMessages = () => {
       ["messages", { account_id: accountId!, session_id: sessionId! }],
       (old = []) => [...old, newMsg]
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newUserChat]);
+  }, [newUserChat, queryClient, accountId, sessionId]);
 
   const buildMessageSchema = (isUser: boolean): ListMessagesResponse => {
     const baseMessage = {
@@ -306,13 +272,13 @@ export const ChatMessages = () => {
       >
         <div className="max-w-4xl mx-auto space-y-4">
           {/* Render past messages */}
-          {messages?.map((message) => (
-            <ChatBubbles key={message.id} message={message} />
-          ))}
+          <MessageList accountId={accountId} sessionId={sessionId} />
           {/* Render streaming response */}
+
           {newUserChat && (
             <EventResponseStream onDoneStreaming={handleDoneStreaming} />
           )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
