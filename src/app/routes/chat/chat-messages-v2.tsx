@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLoaderData, type LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
 import { useWebSocketConnection } from "@/hooks/use-ws";
 
 import {
   useListMessages,
-  listMessagesQueryOptions,
   type ListMessagesResponse,
 } from "@/features/chat/api/list-messages";
 
+import { loader } from "@/features/chat/loaders/chat-messages-loader";
 import {
   ChatInput,
   type ChatInputType,
@@ -15,30 +15,13 @@ import {
 import { ChatBubble } from "@/features/chat/components/chat-bubble";
 
 import type { Message, MessageOutputMessageType } from "@/types/models";
-import type {
-  BaseEventResponse,
-  AgentResponseTokenStreamEvent,
-} from "@/types/api";
-import { QueryClient, useQueryClient } from "@tanstack/react-query";
+import type { BaseEventResponse } from "@/types/api";
+import { handleEventStream, type ParsedEvent } from "@/utils/handleEventStream";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { LoadingDots } from "@/features/chat/components/loading";
 
-export const loader =
-  (queryClient: QueryClient) =>
-  async ({ params }: LoaderFunctionArgs) => {
-    const accountId = params.accountId as string;
-    const sessionId = params.sessionId as string;
-
-    await queryClient.ensureQueryData(
-      listMessagesQueryOptions({
-        query: {
-          account_id: accountId,
-          session_id: sessionId,
-        },
-      })
-    );
-    return { accountId, sessionId };
-  };
-
-export const ChatBubbles = ({ message }: { message: Message }) => {
+const ChatBubbles = ({ message }: { message: Message }) => {
   const isUser = message.sender === "user"; // message can only be from user or assistant
 
   // Handle rendering of user message from input
@@ -66,71 +49,132 @@ export const ChatBubbles = ({ message }: { message: Message }) => {
 };
 
 // TODO: I think this better return Components instead of strings
-const handleEventStream = (event: BaseEventResponse) => {
-  // Handle agent response token stream
+// const handleEventStream = (
+//   event: BaseEventResponse
+// ): {
+//   event: Events;
+//   data: string;
+//   type: EventDataType;
+// } => {
+//   // Handle agent response token stream
 
-  if (event.event === "agent_response") {
-    // Get the data
-    const agentResponseData = event.data;
-    // Check the type of the data
+//   if (event.event === "agent_response") {
+//     const parsed = {
+//       event: event.event,
+//     }
+//     // Get the data
+//     const agentResponseData = event.data;
+//     // Check the type of the data
 
-    // If it's a token, then it will render the word by word like a typewriter, delta returns the word
-    if (agentResponseData.type === "token") {
-      const data = agentResponseData as AgentResponseTokenStreamEvent;
-      return data.delta;
-    }
+//     // If it's a token, then it will render the word by word like a typewriter, delta returns the word
+//     if (agentResponseData.type === "token") {
+//       const data = agentResponseData as AgentResponseTokenStreamEvent;
+//       return {
+//         event: event.event,
+//         data: data.delta,
+//         type: agentResponseData.type,
+//       };
+//     }
 
-    // If it's a message, then TODO, for now return null
-    // if (agentResponseData.type === "message") {
-    //   // const data = agentResponseData as AgentResponseMessageOutputEvent;
-    //   // return data.message;
-    //   return null;
-    // }
+//     // If it's a message, then TODO, for now return null
+//     // if (agentResponseData.type === "message") {
+//     //   // const data = agentResponseData as AgentResponseMessageOutputEvent;
+//     //   // return data.message;
+//     //   return null;
+//     // }
 
-    if (agentResponseData.type === "done") {
-      return "//done//";
+//     if (agentResponseData.type === "done") {
+//       return {
+//         event:
+//       };
+//     }
+//   }
+
+//   // Ignore other events for now and return null
+//   return null;
+// };
+
+const RenderEvent = ({
+  event,
+  tokens,
+}: {
+  event: ParsedEvent;
+  tokens: string;
+}) => {
+  if (event?.event === "processing_session") {
+    return (
+      <div className="flex w-full justify-start">
+        <div className="flex flex-col space-y-1 max-w-[80%]">
+          <div className="px-4 py-3">
+            <LoadingDots className="text-gray-400" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (event?.event === "agent_response") {
+    if (tokens.length > 0) {
+      return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
+    } else {
+      return (
+        <div className="flex w-full justify-start">
+          <div className="flex flex-col space-y-1 max-w-[80%]">
+            <div className="px-4 py-3">
+              <LoadingDots className="text-gray-400" />
+            </div>
+          </div>
+        </div>
+      );
     }
   }
 
-  // Ignore other events for now and return null
-  return null;
+  return (
+    <div className="flex w-full justify-start">
+      <div className="flex flex-col space-y-1 max-w-[80%]">
+        <div className="px-4 py-3">
+          <LoadingDots className="text-gray-400" />
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export const EventResponseStream = ({
+const EventResponseStream = ({
   onDoneStreaming,
 }: {
   onDoneStreaming: (fullResponse: string) => void;
 }) => {
   const { lastJsonMessage } = useWebSocketConnection();
   const [tokens, setTokens] = useState<string[]>([]);
+  const [curEvent, setCurEvent] = useState<ParsedEvent>(null);
 
   useEffect(() => {
     const event = lastJsonMessage as BaseEventResponse;
     if (event) {
-      const token = handleEventStream(event);
-      if (token && token !== "//done//") {
-        setTokens((prev) => [...prev, token]);
+      const parsedEvent = handleEventStream(event);
+      if (parsedEvent) {
+        if (parsedEvent.type === "token") {
+          setTokens((prev) => [...prev, parsedEvent.data]);
+        }
+        if (parsedEvent.type === "done") {
+          onDoneStreaming(tokens.join(""));
+          setTokens([]);
+        }
       }
-      if (token === "//done//") {
-        onDoneStreaming(tokens.join(""));
-        setTokens([]);
-      }
+      setCurEvent(parsedEvent);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastJsonMessage]);
 
-  // if (loading) {
-  //   return <LoadingDots className="text-gray-400" />;
-  // }
-
-  return (
-    <ChatBubble content={tokens.join("")} isUser={false} isStreaming={true} />
-  );
+  return <RenderEvent tokens={tokens.join("")} event={curEvent} />;
 };
 
 export const ChatMessages = () => {
   const { accountId, sessionId } = useLoaderData() as Awaited<
     ReturnType<ReturnType<typeof loader>>
   >;
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [newUserChat, setNewUserChat] = useState<string | null>(null);
@@ -142,7 +186,7 @@ export const ChatMessages = () => {
   // const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch past messages from database
-  const { data: messages, isFetched } = useListMessages({
+  const { data: messages } = useListMessages({
     queryParams: {
       query: {
         account_id: accountId!,
@@ -158,7 +202,7 @@ export const ChatMessages = () => {
 
   useEffect(() => {
     if (messages?.length && !hasInitiallyScrolled.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       hasInitiallyScrolled.current = true;
     }
   }, [messages]);
@@ -182,17 +226,63 @@ export const ChatMessages = () => {
       if (!textContent) return;
       setNewUserChat(textContent);
     },
-    [newUserChat]
+    []
   );
 
   // When the stream finishes, append into the cache & reset local state
   useEffect(() => {
     if (!fullResponse) return;
 
+    // Build a Message object consistent with the schema
+    const newMsg = buildMessageSchema(false);
+
+    queryClient.setQueryData<ListMessagesResponse[]>(
+      // same key used in useListMessages
+      ["messages", { account_id: accountId, session_id: sessionId }],
+      (old = []) => [...old, newMsg]
+    );
+
+    // clear the temporary UI bits
+    setNewUserChat(null);
+    setFullResponse(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullResponse]);
+
+  useEffect(() => {
+    if (!newUserChat) return;
+
     // Build a Message object consistent with your DB shape
-    const newMsg: ListMessagesResponse = {
-      ...messages?.[0]!,
+    const newMsg = buildMessageSchema(true);
+
+    queryClient.setQueryData<Message[]>(
+      // same key used in useListMessages
+      ["messages", { account_id: accountId!, session_id: sessionId! }],
+      (old = []) => [...old, newMsg]
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newUserChat]);
+
+  const buildMessageSchema = (isUser: boolean): ListMessagesResponse => {
+    const baseMessage = {
+      user_id: "",
+      assistant_id: "",
+      organization_id: user?.organization || "",
+      session_id: accountId,
+      account_id: sessionId,
       id: `streamed-${Date.now()}`,
+    };
+    if (isUser) {
+      return {
+        ...baseMessage,
+        sender: "user",
+        input: {
+          content: newUserChat || "",
+        },
+        output: null,
+      };
+    }
+    return {
+      ...baseMessage,
       sender: "assistant",
       input: null,
       output: {
@@ -202,38 +292,7 @@ export const ChatMessages = () => {
         content: [{ type: "output_text", text: fullResponse }],
       },
     };
-
-    queryClient.setQueryData<Message[]>(
-      // same key used in useListMessages
-      ["messages", { account_id: accountId!, session_id: sessionId! }],
-      (old = []) => [...old, newMsg]
-    );
-
-    // clear the temporary UI bits
-    setNewUserChat(null);
-    setFullResponse(null);
-  }, [fullResponse]);
-
-  useEffect(() => {
-    if (!newUserChat) return;
-
-    // Build a Message object consistent with your DB shape
-    const newMsg: ListMessagesResponse = {
-      ...messages?.[0]!,
-      id: `streamed-${Date.now()}`,
-      sender: "user",
-      input: {
-        content: newUserChat,
-      },
-      output: null,
-    };
-
-    queryClient.setQueryData<Message[]>(
-      // same key used in useListMessages
-      ["messages", { account_id: accountId!, session_id: sessionId! }],
-      (old = []) => [...old, newMsg]
-    );
-  }, [newUserChat]);
+  };
 
   const handleDoneStreaming = (fullResponse: string) => {
     setFullResponse(fullResponse);
