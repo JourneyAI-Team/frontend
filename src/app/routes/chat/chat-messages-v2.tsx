@@ -188,6 +188,9 @@ export const Chat = () => {
   const queryClient = useQueryClient();
 
   const [newUserChat, setNewUserChat] = useState<string | null>(null);
+  const [newUserChatAttachments, setNewUserChatAttachments] = useState<
+    File[] | null
+  >(null);
   const [fullResponse, setFullResponse] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -204,6 +207,7 @@ export const Chat = () => {
       if (!textContent) return;
 
       setNewUserChat(textContent);
+      setNewUserChatAttachments(files || []);
     },
     []
   );
@@ -223,6 +227,7 @@ export const Chat = () => {
     });
     // clear the temporary UI bits
     setNewUserChat(null);
+    setNewUserChatAttachments(null);
     setFullResponse(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullResponse, queryClient, accountId, sessionId]);
@@ -250,6 +255,14 @@ export const Chat = () => {
       id: `streamed-${Date.now()}`,
     };
     if (isUser) {
+      // Convert File[] to AttachmentMetadata[]
+      const attachments = (newUserChatAttachments || []).map((file) => ({
+        type: "file",
+        name: file.name,
+        mimetype: file.type,
+        size: file.size,
+      }));
+
       return {
         ...baseMessage,
         sender: "user",
@@ -257,7 +270,7 @@ export const Chat = () => {
           content: newUserChat || "",
         },
         output: null,
-        attachments: [],
+        attachments,
       };
     }
     return {
