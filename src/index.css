@@ -6,22 +6,22 @@
 @layer {
   @font-face {
     font-family: MabryPro-Light;
-    src: url("./assets/fonts/MabryPro-Light.ttf");
+    src: url("./assets/fonts/MabryPro-Light.woff");
   }
 
   @font-face {
     font-family: MabryPro-Regular;
-    src: url("./assets/fonts/MabryPro-Regular.ttf");
+    src: url("./assets/fonts/MabryPro-Regular.woff");
   }
 
   @font-face {
     font-family: MabryPro-Medium;
-    src: url("./assets/fonts/MabryPro-Medium.ttf");
+    src: url("./assets/fonts/MabryPro-Medium.woff");
   }
 
   @font-face {
     font-family: MabryPro-Bold;
-    src: url("./assets/fonts/MabryPro-Bold.ttf");
+    src: url("./assets/fonts/MabryPro-Bold.woff");
   }
 }
 
