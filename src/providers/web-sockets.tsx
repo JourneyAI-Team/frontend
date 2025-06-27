@@ -12,12 +12,18 @@ export type WebSocketContext<TReturnData = unknown> = {
 export const WebSocketContext = createContext<WebSocketContext | null>(null);
 
 export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
-  const { apiKey } = useAuth();
+  const { apiKey, logout } = useAuth();
   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
     `${import.meta.env.VITE_WS_URL}/ws/main`,
     {
       queryParams: { api_key: apiKey! },
       share: true,
+      onError(event) {
+        if (event.type === "error") {
+          // TODO: Refresh api keys, since common error could be websocket api key expiry
+          logout();
+        }
+      },
     }
   );
 
