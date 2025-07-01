@@ -62,8 +62,8 @@ import { useListMessages } from "@/features/chat/api/list-messages";
 import { FloatingButton } from "@/features/chat/components/floating-button";
 import { GeneralAssistantChatBox } from "@/features/chat/components/general-chat-box";
 import { WebSocketProvider } from "@/providers/web-sockets";
-import { GA_ACCOUNT_ID, GA_SESSION_ID } from "@/utils/vars";
-import { useCreateAccount } from "@/features/chat/api/create-account";
+// import { GA_ACCOUNT_ID, GA_SESSION_ID } from "@/utils/vars";
+// import { useCreateAccount } from "@/features/chat/api/create-account";
 
 export const loader =
   (queryClient: QueryClient) =>
@@ -427,7 +427,7 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
     },
   });
 
-  const createAccount = useCreateAccount({});
+  // const createAccount = useCreateAccount({});
 
   // handle setup mode - redirect to first account if available, otherwise show create modal
   useEffect(() => {
@@ -487,19 +487,20 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
   };
 
   const handleToggleGeneralAssistantChat = () => {
-    if (!localStorage.getItem(GA_ACCOUNT_ID)) {
-      createAccount.mutate(
-        {
-          name: "",
-          description: "",
-        },
-        {
-          onSuccess: () => {
-            setOpenGeneralAssistantChat(!openGeneralAssistantChat);
-          },
-        }
-      );
-    }
+    setOpenGeneralAssistantChat(!openGeneralAssistantChat);
+    // if (!localStorage.getItem(GA_ACCOUNT_ID)) {
+    //   createAccount.mutate(
+    //     {
+    //       name: "",
+    //       description: "",
+    //     },
+    //     {
+    //       onSuccess: () => {
+    //         setOpenGeneralAssistantChat(!openGeneralAssistantChat);
+    //       },
+    //     }
+    //   );
+    // }
   };
 
   return (

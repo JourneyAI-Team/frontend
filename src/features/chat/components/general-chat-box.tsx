@@ -8,18 +8,20 @@ import { useWebSocketConnection } from "@/hooks/use-ws";
 import type { Message } from "@/types/models";
 import type { MessageOutputMessageType } from "@/types/models";
 import { buildMessageSchema } from "@/utils/build-message-schema";
-import { GA_SESSION_ID, GA_ACCOUNT_ID } from "@/utils/vars";
+// import { GA_SESSION_ID, GA_ACCOUNT_ID } from "@/utils/vars";
 import { handleEventStream, type ParsedEvent } from "@/utils/handleEventStream";
+import { messages } from "@/utils/build-message-schema";
 import type { BaseEventResponse } from "@/types/api";
 
 import { ChatBubble } from "./chat-bubble";
 
-import { useSession } from "../api/get-session";
-import { useCreateSession } from "../api/create-session";
-import { useAccount } from "../api/get-account";
-import { useCreateAccount } from "../api/create-account";
-import { useListMessages } from "../api/list-messages";
+// import { useSession } from "../api/get-session";
+// import { useCreateSession } from "../api/create-session";
+// import { useAccount } from "../api/get-account";
+// import { useCreateAccount } from "../api/create-account";
+// import { useListMessages } from "../api/list-messages";
 import { LoadingDots } from "./loading";
+
 import type { ChatInputType } from "./chat-input";
 
 const ChatBubbles = ({ message }: { message: Message }) => {
@@ -136,57 +138,55 @@ const EventResponseStream = ({
   return <RenderEvent tokens={tokens.join("")} event={curEvent} />;
 };
 
-const MessageList = memo(
-  ({ accountId, sessionId }: { accountId: string; sessionId: string }) => {
-    // Fetch past messages from database
-    const { data: messages } = useListMessages({
-      queryParams: {
-        query: {
-          account_id: accountId,
-          session_id: sessionId,
-        },
-      },
-    });
+const MessageList = memo(({ sessionId }: { sessionId: string }) => {
+  // Fetch past messages from database
+  // const { data: messages } = useListMessages({
+  //   queryParams: {
+  //     query: {
+  //       account_id: accountId,
+  //       session_id: sessionId,
+  //     },
+  //   },
+  // });
 
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const hasInitiallyScrolled = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const hasInitiallyScrolled = useRef(false);
 
-    useEffect(() => {
-      hasInitiallyScrolled.current = false;
-    }, [sessionId]);
+  useEffect(() => {
+    hasInitiallyScrolled.current = false;
+  }, [sessionId]);
 
-    useEffect(() => {
-      if (messages?.length && !hasInitiallyScrolled.current) {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        hasInitiallyScrolled.current = true;
-      }
-    }, [messages]);
+  useEffect(() => {
+    if (messages?.length && !hasInitiallyScrolled.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      hasInitiallyScrolled.current = true;
+    }
+  }, [messages]);
 
-    return (
-      <>
-        {messages?.map((message) => (
-          <ChatBubbles key={message.id} message={message} />
-        ))}
-        <div ref={messagesEndRef} />
-      </>
-    );
-  }
-);
+  return (
+    <>
+      {messages?.map((message) => (
+        <ChatBubbles key={message.id} message={message} />
+      ))}
+      <div ref={messagesEndRef} />
+    </>
+  );
+});
 
 const ChatInput = ({
   isOpen,
-  sessionId,
+  // sessionId,
   onSendMessage,
 }: {
   isOpen: boolean;
-  sessionId: string;
+  sessionId?: string;
   onSendMessage: (data: ChatInputType) => void;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [inputValue, setInputValue] = useState("");
 
-  const { sendJsonMessage } = useWebSocketConnection();
+  // const { sendJsonMessage } = useWebSocketConnection();
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -198,19 +198,19 @@ const ChatInput = ({
     const content = inputValue.trim();
     if (!content) return;
 
-    const messageData: {
-      content: string;
-      session_id: string;
-      attachments?: [];
-    } = {
-      content,
-      session_id: sessionId,
-    };
+    // const messageData: {
+    //   content: string;
+    //   session_id: string;
+    //   attachments?: [];
+    // } = {
+    //   content,
+    //   session_id: sessionId,
+    // };
 
-    sendJsonMessage({
-      event: "ingest_message",
-      data: messageData,
-    });
+    // sendJsonMessage({
+    //   event: "ingest_message",
+    //   data: messageData,
+    // });
     onSendMessage({ content });
     setInputValue("");
   };
@@ -253,26 +253,28 @@ export const GeneralAssistantChatBox = ({
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [sessionId, setSessionId] = useState<string | null>(() =>
-    localStorage.getItem(GA_SESSION_ID)
-  );
+  const sessionId = "test-session";
+  const accountId = "test-account";
+  // const [sessionId, setSessionId] = useState<string | null>("test-session");
 
-  const [accountId, setAccountId] = useState<string | null>(() =>
-    localStorage.getItem(GA_ACCOUNT_ID)
-  );
+  // const [accountId, setAccountId] = useState<string | null>("test-account");
 
-  const createAccount = useCreateAccount({});
-  const createSession = useCreateSession({});
+  // const createAccount = useCreateAccount({});
+  // const createSession = useCreateSession({});
 
-  const accountData = useAccount({
-    queryParams: {
-      accountId: accountId!,
-    },
-    // queryConfig: {
-    //   enabled: !!accountId,
-    // },
-  });
+  // const accountData = useAccount({
+  //   queryParams: {
+  //     accountId: accountId!,
+  //   },
+  //   // queryConfig: {
+  //   //   enabled: !!accountId,
+  //   // },
+  // });
 
+  // useEffect(() => {
+  //   if (!accountData) {
+  //   }
+  // }, [accountData.data]);
   // useEffect(() => {
   //   if (!accountId || !accountData.data) {
   //     // createAccount.mutate(
@@ -401,9 +403,9 @@ export const GeneralAssistantChatBox = ({
 
   if (!isOpen) return;
 
-  if (!accountId) return;
+  // if (!accountId) return;
 
-  if (!sessionId) return;
+  // if (!sessionId) return;
 
   const handleSendMessage = (message: ChatInputType) => {
     setNewUserChat(message.content);
@@ -434,9 +436,7 @@ export const GeneralAssistantChatBox = ({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/** Insert chat messages here */}
-        {accountId && sessionId && (
-          <MessageList accountId={accountId} sessionId={sessionId} />
-        )}
+        {accountId && sessionId && <MessageList sessionId={sessionId} />}
         {newUserChat && (
           <EventResponseStream onDoneStreaming={handleDoneStreaming} />
         )}

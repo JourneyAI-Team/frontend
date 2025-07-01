@@ -1,4 +1,5 @@
 import type { ListMessagesResponse } from "@/features/chat/api/list-messages";
+import { v4 as uuid } from "uuid";
 
 type BuildMessageSchema = {
   isUser: boolean;
@@ -17,7 +18,7 @@ export const buildMessageSchema = ({
     organization_id: "",
     session_id: "",
     account_id: "",
-    id: `streamed-${Date.now()}`,
+    id: uuid(),
   };
   if (isUser) {
     // Convert File[] to AttachmentMetadata[]
@@ -43,7 +44,7 @@ export const buildMessageSchema = ({
     sender: "assistant",
     input: null,
     output: {
-      id: `streamed-output-${Date.now()}`,
+      id: uuid(),
       status: "completed",
       type: "message",
       content: [{ type: "output_text", text: message }],
@@ -51,3 +52,15 @@ export const buildMessageSchema = ({
     attachments: [],
   };
 };
+
+const content = ["I am ready to begin.", "How would you like to be assisted?"];
+
+export const messages: ListMessagesResponse[] = Array.from(
+  { length: content.length },
+  (_, i) =>
+    buildMessageSchema({
+      isUser: i % 2 === 0, // example: alternate user/assistant
+      message: content[i],
+      newAttachments: [], // or supply your File[] here
+    })
+);
