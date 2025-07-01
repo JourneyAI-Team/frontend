@@ -62,6 +62,8 @@ import { useListMessages } from "@/features/chat/api/list-messages";
 import { FloatingButton } from "@/features/chat/components/floating-button";
 import { GeneralAssistantChatBox } from "@/features/chat/components/general-chat-box";
 import { WebSocketProvider } from "@/providers/web-sockets";
+import { GA_ACCOUNT_ID, GA_SESSION_ID } from "@/utils/vars";
+import { useCreateAccount } from "@/features/chat/api/create-account";
 
 export const loader =
   (queryClient: QueryClient) =>
@@ -425,6 +427,8 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
     },
   });
 
+  const createAccount = useCreateAccount({});
+
   // handle setup mode - redirect to first account if available, otherwise show create modal
   useEffect(() => {
     if (isSetup && !isAccountsLoading) {
@@ -482,6 +486,22 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
     setOpenGeneralAssistantChat(false);
   };
 
+  const handleToggleGeneralAssistantChat = () => {
+    if (!localStorage.getItem(GA_ACCOUNT_ID)) {
+      createAccount.mutate(
+        {
+          name: "",
+          description: "",
+        },
+        {
+          onSuccess: () => {
+            setOpenGeneralAssistantChat(!openGeneralAssistantChat);
+          },
+        }
+      );
+    }
+  };
+
   return (
     <>
       <SidebarProvider>
@@ -507,11 +527,7 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
         <SidebarInset className="bg-gray-50">
           <Header />
           <div className="fixed bottom-10 right-20 z-40">
-            <FloatingButton
-              onClick={() =>
-                setOpenGeneralAssistantChat(!openGeneralAssistantChat)
-              }
-            />
+            <FloatingButton onClick={handleToggleGeneralAssistantChat} />
           </div>
 
           <div className="fixed bottom-25 right-20 z-39">

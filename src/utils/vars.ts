@@ -1,5 +1,7 @@
 export const ACCESS_TOKEN_KEY = "journey_ai_access_token";
 export const API_KEY = "journey_ai_api_key";
+export const GA_SESSION_ID = "journey_ai_ga_session_id";
+export const GA_ACCOUNT_ID = "journey_ai_ga_account_id";
 
 export const SUPPORTED_MIME_TYPES = new Set<string>([
   "text/x-c",

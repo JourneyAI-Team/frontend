@@ -8,9 +8,10 @@ type UseAccountQueryParams = {
   accountId: string;
 };
 
+type UseAccountResponse = Account & { id: string };
 export const getAccount = ({
   accountId,
-}: UseAccountQueryParams): Promise<Account> => {
+}: UseAccountQueryParams): Promise<UseAccountResponse> => {
   return api.get(`/account/:accountId`, {
     urlParams: {
       ":accountId": accountId,

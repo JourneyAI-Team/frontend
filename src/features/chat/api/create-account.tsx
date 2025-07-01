@@ -12,8 +12,11 @@ export const createAccountInput = z.object({
 
 export type CreateAccountData = z.infer<typeof createAccountInput>;
 
-export const createAccountApi = (data: CreateAccountData): Promise<Account> =>
-  api.post("/account", data);
+export type CreateAccountResponse = Account & { id: string };
+
+export const createAccountApi = (
+  data: CreateAccountData
+): Promise<CreateAccountResponse> => api.post("/account", data);
 
 type UseCreateAccountMutationConfig = {
   mutationConfig?: MutationConfig<typeof createAccountApi>;
