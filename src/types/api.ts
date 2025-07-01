@@ -25,7 +25,8 @@ export type EventDataType =
   | "tool_call"
   | "tool_output"
   | "handoff"
-  | "error";
+  | "error"
+  | "file_search_call";
 
 export type Events =
   | "processing_session"
@@ -90,6 +91,20 @@ export type AgentResponseToolCallOutputEvent = {
     raw_output: string;
     output: string;
   };
+};
+
+export type AgentResponseFileSearchCallEvent = {
+  type: "file_search_call";
+  status: "completed";
+  id: string;
+  queries: Array<string>;
+  results: {
+    attributes: Record<string, unknown>;
+    file_id: string;
+    filename: string;
+    score: number;
+    text: string;
+  }[];
 };
 
 export type AgentResponseHandoffRequestedEvent = {

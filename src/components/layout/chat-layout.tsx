@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { QueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   useNavigate,
   useParams,
@@ -56,7 +56,12 @@ import { AccountSelectButton } from "@/features/chat/components/accounts-select-
 import { AccountDropdownMenuItem } from "@/features/chat/components/account-dropdown-menu-item";
 import { GptModelSelectButton } from "@/features/chat/components/gpt-model-select-button";
 
-import type { Account, Base, Session } from "@/types/models";
+import type { Account, Base } from "@/types/models";
+import { cn } from "@/utils/cn";
+import { useListMessages } from "@/features/chat/api/list-messages";
+import { FloatingButton } from "@/features/chat/components/floating-button";
+import { GeneralAssistantChatBox } from "@/features/chat/components/general-chat-box";
+import { WebSocketProvider } from "@/providers/web-sockets";
 
 export const loader =
   (queryClient: QueryClient) =>
@@ -179,34 +184,69 @@ const ChatSidebarHeader = ({
 };
 
 export const ChatSidebarSessionsGroupContent = ({
-  sessionsData,
   onSessionClick,
 }: {
-  sessionsData: (Session & Base)[];
   onSessionClick: (sessionId: string) => void;
 }) => {
-  const { sessionId } = useParams();
+  const { sessionId, accountId } = useParams();
+
+  // Reset the session title once messages length reach 4
+
+  const queryClient = useQueryClient();
+  const { data: messages } = useListMessages({
+    queryParams: {
+      query: {
+        account_id: accountId!,
+        session_id: sessionId!,
+      },
+    },
+  });
+
+  const { data: sessions } = useListSessions({
+    queryParams: {
+      query: {
+        account_id: accountId!,
+      },
+    },
+    queryConfig: {
+      enabled: !!accountId,
+    },
+  });
+
+  useEffect(() => {
+    if (messages && messages?.length === 4) {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "sessions",
+          {
+            account_id: accountId,
+          },
+        ],
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>HISTORY</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {sessionsData.map((item) => (
-            <SidebarMenuItem
-              key={item.id}
-              className={`${
-                sessionId === item.id ? "bg-neutral-200 rounded-md" : ""
-              }`}
-            >
-              <SidebarMenuButton
-                asChild
-                onClick={() => onSessionClick(item.id)}
-              >
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {sessions &&
+            sessions.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  asChild
+                  onClick={() => onSessionClick(item.id)}
+                  className={cn(
+                    "inline-block truncate max-w-xs",
+                    sessionId === item.id ? "bg-neutral-200 rounded-md" : ""
+                  )}
+                >
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
@@ -369,6 +409,8 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
 
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const [forceCreateNewAccount, setForceCreateNewAccount] = useState(false);
+  const [openGeneralAssistantChat, setOpenGeneralAssistantChat] =
+    useState(false);
 
   const { data: account, isLoading: isAccountLoading } = useAccount({
     queryParams: { accountId: accountId! },
@@ -380,17 +422,6 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
   const { data: accounts, isLoading: isAccountsLoading } = useListAccounts({
     queryConfig: {
       enabled: !!account || isSetup,
-    },
-  });
-
-  const { data: sessions } = useListSessions({
-    queryParams: {
-      query: {
-        account_id: accountId!,
-      },
-    },
-    queryConfig: {
-      enabled: !!accountId,
     },
   });
 
@@ -446,6 +477,11 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
   const handleSessionClick = (sessionId: string) => {
     navigate(`/a/${accountId!}/s/${sessionId}`);
   };
+
+  const handleCloseGeneralAssistantChat = () => {
+    setOpenGeneralAssistantChat(false);
+  };
+
   return (
     <>
       <SidebarProvider>
@@ -461,7 +497,6 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
             <ChatSidebarGeneralGroupContent accountId={accountId!} />
             <ChatSidebarSessionsGroupContent
               onSessionClick={handleSessionClick}
-              sessionsData={sessions || []}
             />
           </SidebarContent>
           <SidebarFooter>
@@ -471,6 +506,22 @@ export const ChatLayout = ({ isSetup = false }: { isSetup?: boolean }) => {
         </Sidebar>
         <SidebarInset className="bg-gray-50">
           <Header />
+          <div className="fixed bottom-10 right-20 z-40">
+            <FloatingButton
+              onClick={() =>
+                setOpenGeneralAssistantChat(!openGeneralAssistantChat)
+              }
+            />
+          </div>
+
+          <div className="fixed bottom-25 right-20 z-39">
+            <WebSocketProvider>
+              <GeneralAssistantChatBox
+                onClose={handleCloseGeneralAssistantChat}
+                isOpen={openGeneralAssistantChat}
+              />
+            </WebSocketProvider>
+          </div>
           <div className="flex flex-1 flex-col gap-4 bg-gray-50">
             <Outlet />
           </div>

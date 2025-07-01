@@ -1,327 +1,272 @@
-// // TODO: Delete this file
-// import { useEffect, useRef, useState } from "react";
-// import { z } from "zod";
-// import useWebsocket, { ReadyState } from "react-use-websocket";
-// import type { QueryClient } from "@tanstack/react-query";
-// import { useLoaderData, type LoaderFunctionArgs } from "react-router";
-// import { useQueryClient } from "@tanstack/react-query";
+/* eslint-disable react-hooks/exhaustive-deps */
+import {
+  // memo,
+  useRef,
+  useEffect,
+  useState,
+  useReducer,
+  // useCallback,
+  // startTransition,
+} from "react";
+import { useLoaderData } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
-// import { ChatMessage } from "@/features/chat/components/chat-message";
-// import { Button } from "@/components/ui/button";
-// import { Form } from "@/components/ui/react-hook-form-wrapper";
-// import { FormControl, FormField, FormItem } from "@/components/ui/form";
+import { useWebSocketConnection } from "@/hooks/use-ws";
 
-// import {
-//   getMessagesQueryOptions,
-//   useMessages,
-// } from "@/features/chat/api/list-messages";
-// import { ChatMessageStream } from "@/features/chat/components/chat-message-stream";
-// import { NewChatMessage } from "@/features/chat/components/new-chat-messages";
+import { ChatBubble } from "@/features/chat/components/chat-bubble";
+import {
+  useListMessages,
+  type ListMessagesResponse,
+} from "@/features/chat/api/list-messages";
+import {
+  ChatInput,
+  type ChatInputType,
+} from "@/features/chat/components/chat-input";
+import { loader } from "@/features/chat/loaders/chat-messages-loader";
 
-// import type { Events } from "@/types/api";
-// import { Paperclip, Send, AtSign, Globe, Layers } from "lucide-react";
-// import { API_KEY } from "@/utils/vars";
+import type { Message, MessageOutputMessageType } from "@/types/models";
+import { reducer } from "@/utils/handleEventStream";
+import { createPage, type IComponent } from "@/utils/dynamic-rendering/service";
+import type {
+  AgentResponseMessageOutputEvent,
+  BaseEventResponse,
+} from "@/types/api";
 
-// export const loader =
-//   (queryClient: QueryClient) =>
-//   async ({ params }: LoaderFunctionArgs) => {
-//     const accountId = params.accountId as string;
-//     const sessionId = params.sessionId as string;
+const ChatBubbles = ({ message }: { message: Message }) => {
+  const isUser = message.sender === "user"; // message can only be from user or assistant
 
-//     await queryClient.ensureQueryData(
-//       getMessagesQueryOptions({ accountId, sessionId })
-//     );
-//     return { accountId, sessionId };
-//   };
+  // Handle rendering of user message from input
+  if (isUser) {
+    const content = message.input?.content;
+    if (!content) return null;
+    return (
+      <ChatBubble
+        content={content}
+        isUser={true}
+        attachments={message.attachments}
+      />
+    );
+  }
 
-// const chatInputSchema = z.object({
-//   content: z.string().min(1, "Message cannot be empty"),
-// });
-// type ChatInputType = z.infer<typeof chatInputSchema>;
+  // Handle rendering of assistant message from output
+  if (!message.output) return null;
 
-// type ChatMessageProp = {
-//   isUser: boolean;
-//   content?: string;
-//   outputType?: "message" | string;
-// };
+  // Skip tool calls and other non-message types for now
+  // TODO: Handle tool calls and other non-message types
+  if (message.output.type !== "message") {
+    return null;
+  }
 
-// export const ChatMessages = () => {
-//   const { accountId, sessionId } = useLoaderData() as Awaited<
-//     ReturnType<ReturnType<typeof loader>>
-//   >;
-//   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-//   const queryClient = useQueryClient();
-//   const [event, setEvent] = useState<Events | "idle">("idle");
-//   const [tokenStream, setTokenStream] = useState("");
-//   const [newMessages, setNewMessages] = useState<ChatMessageProp[]>([]);
+  // Get text content from assistant message output
+  const contentObj = message.output as MessageOutputMessageType;
+  const content = contentObj.content.find((c) => c.type === "output_text");
+  if (!content) return null;
 
-//   // Fetch messages from database
-//   const { data, isRefetching } = useMessages({
-//     queryParams: {
-//       accountId,
-//       sessionId,
-//     },
-//     queryConfig: {
-//       refetchOnWindowFocus: true,
-//     },
-//   });
+  return (
+    <ChatBubble
+      content={content.text}
+      isUser={false}
+      attachments={message.attachments}
+    />
+  );
+};
 
-//   // Establish Websocket connection
-//   const WS_URL = `${import.meta.env.VITE_WS_URL}`;
-//   const { lastMessage, sendMessage, readyState } = useWebsocket(
-//     `${WS_URL}/ws/main`,
-//     {
-//       queryParams: {
-//         api_key: localStorage.getItem(API_KEY)!,
-//       },
-//     }
-//   );
+const ChatHistory = ({
+  accountId,
+  sessionId,
+}: {
+  accountId: string;
+  sessionId: string;
+}) => {
+  // Fetch past messages from database
 
-//   useEffect(() => {
-//     if (readyState === ReadyState.OPEN) {
-//       if (data?.length === 0) {
-//         handleSendMessage({ content: "I'm ready to begin." });
-//       }
-//     }
-//   }, [readyState]);
+  const { data: messages } = useListMessages({
+    queryParams: {
+      query: {
+        account_id: accountId,
+        session_id: sessionId,
+      },
+    },
+  });
 
-//   // Clear new messages when refetching or when session changes
-//   useEffect(() => {
-//     setNewMessages([]);
-//     setTokenStream("");
-//     setEvent("idle");
-//   }, [sessionId, isRefetching]);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const hasInitiallyScrolled = useRef(false);
 
-//   // Auto-scroll on new message or token stream
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [newMessages, tokenStream]);
+  useEffect(() => {
+    hasInitiallyScrolled.current = false;
+  }, [sessionId]);
 
-//   // Typing effect stream handler
-//   useEffect(() => {
-//     if (!lastMessage?.data) return;
+  useEffect(() => {
+    if (messages?.length && !hasInitiallyScrolled.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      hasInitiallyScrolled.current = true;
+    }
+  }, [messages]);
 
-//     try {
-//       const parsedLastMessage = JSON.parse(lastMessage.data);
-//       const delta = parsedLastMessage.data?.delta;
-//       const type = parsedLastMessage.data?.type;
+  return (
+    <>
+      {messages?.map((message) => (
+        <ChatBubbles key={message.id} message={message} />
+      ))}
+      <div ref={messagesEndRef} />
+    </>
+  );
+};
 
-//       if (parsedLastMessage.event) {
-//         setEvent(parsedLastMessage.event);
-//       }
+const ResponseStream = ({
+  onDoneStreaming,
+}: {
+  onDoneStreaming: (message: string | null) => void;
+}) => {
+  const { lastJsonMessage } = useWebSocketConnection();
+  const [state, dispatch] = useReducer(reducer, {
+    components: [],
+    current: null,
+  });
+  const [message, setMessage] = useState<string | null>(null);
 
-//       // Handle token streaming for agent responses
-//       if (delta && parsedLastMessage.event === "agent_response") {
-//         setTokenStream((prev) => prev + delta);
-//       }
+  useEffect(() => {
+    const event = lastJsonMessage as BaseEventResponse;
+    if (!event) return;
+    console.log(event);
+    if (event.event === "agent_response") {
+      if (event.data.type === "message") {
+        const data = event.data as AgentResponseMessageOutputEvent;
+        setMessage(data.content.map((d) => d.text).join(""));
+      }
+      if (event.data.type === "done") {
+        onDoneStreaming(message);
+      }
+    }
 
-//       // Final message complete — invalidate query to refetch messages
-//       if (type === "message" && parsedLastMessage.event === "agent_response") {
-//         // Clear the streaming state
-//         setTokenStream("");
-//         setEvent("idle");
+    dispatch(event);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastJsonMessage]);
 
-//         // Clear new messages since they'll be fetched from server
-//         setNewMessages([]);
+  const container: IComponent = {
+    type: "Container",
+    data: {
+      id: "chat-container",
+      items: state.current
+        ? // if you have a current bubble, append it
+          [...state.components, state.current]
+        : // otherwise just use the existing array
+          state.components,
+    },
+  };
+  return <>{createPage(container)}</>;
+};
 
-//         // Invalidate the messages query to refetch from server
-//         queryClient.invalidateQueries({
-//           queryKey: ["messages", accountId, sessionId],
-//         });
-//       }
-//     } catch (error) {
-//       console.error("Error parsing websocket message:", error);
-//     }
-//   }, [lastMessage, accountId, sessionId, queryClient]);
+export const Chat = () => {
+  const { accountId, sessionId } = useLoaderData() as Awaited<
+    ReturnType<ReturnType<typeof loader>>
+  >;
+  const queryClient = useQueryClient();
 
-//   // Send message to websocket
-//   const handleSendMessage = (data: ChatInputType) => {
-//     const messageContent = data.content?.trim();
+  const [newUserChat, setNewUserChat] = useState<string | null>(null);
+  const [finalResponse, setFinalResponse] = useState<string | null>(null);
+  // const [newUserChatAttachments, setNewUserChatAttachments] = useState<
+  //   File[] | null
+  // >(null);
 
-//     if (!messageContent) return;
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-//     // Add user message to new messages immediately for immediate UI feedback
-//     const userMessage = {
-//       isUser: true,
-//       content: messageContent,
-//       outputType: "message" as const,
-//     };
+  const handleSendMessage = (textInput: ChatInputType) => {
+    const text = textInput.content.trim();
+    if (!text) return;
+    setNewUserChat(() => text);
+  };
 
-//     setNewMessages((prev) => [...prev, userMessage]);
+  // 1) Assistant-only effect
+  useEffect(() => {
+    if (!finalResponse) return;
+    queryClient.setQueryData<Message[]>(
+      ["messages", { account_id: accountId, session_id: sessionId }],
+      (old = []) => [...old, buildMessageSchema(false)]
+    );
+    setFinalResponse(null);
+  }, [finalResponse]);
 
-//     // Set processing state
-//     setEvent("processing_session");
-//     setTokenStream("");
+  // 2) User-only effect, runs after the assistant one
+  useEffect(() => {
+    if (!newUserChat) return;
+    queryClient.setQueryData<Message[]>(
+      ["messages", { account_id: accountId, session_id: sessionId }],
+      (old = []) => [...old, buildMessageSchema(true)]
+    );
+    setNewUserChat(null);
+  }, [newUserChat]);
 
-//     // Send message via websocket
-//     sendMessage(
-//       JSON.stringify({
-//         event: "ingest_message",
-//         data: {
-//           content: messageContent,
-//           session_id: sessionId,
-//         },
-//       })
-//     );
+  const buildMessageSchema = (isUser: boolean): ListMessagesResponse => {
+    const baseMessage = {
+      user_id: "",
+      assistant_id: "",
+      organization_id: "",
+      session_id: accountId,
+      account_id: sessionId,
+      id: `streamed-${Date.now()}`,
+    };
+    if (isUser) {
+      // Convert File[] to AttachmentMetadata[]
+      // const attachments = (newUserChatAttachments || []).map((file) => ({
+      //   type: "file",
+      //   name: file.name,
+      //   mimetype: file.type,
+      //   size: file.size,
+      // }));
 
-//     // Clear the textarea directly
-//     setTimeout(() => {
-//       const textarea = document.querySelector(
-//         'textarea[name="content"]'
-//       ) as HTMLTextAreaElement;
-//       if (textarea) {
-//         textarea.value = "";
-//         textarea.style.height = "auto";
-//         // Trigger input event to update React state
-//         textarea.dispatchEvent(new Event("input", { bubbles: true }));
-//       }
-//     }, 0);
-//   };
+      return {
+        ...baseMessage,
+        sender: "user",
+        input: {
+          content: newUserChat || "",
+        },
+        output: null,
+        attachments: [],
+      };
+    }
+    return {
+      ...baseMessage,
+      sender: "assistant",
+      input: null,
+      output: {
+        id: `streamed-output-${Date.now()}`,
+        status: "completed",
+        type: "message",
+        content: [{ type: "output_text", text: finalResponse }],
+      },
+      attachments: [],
+    };
+  };
 
-//   return (
-//     <div className="flex flex-col h-full">
-//       {/* Messages Area */}
-//       <div className="flex-1 overflow-auto px-4 py-6">
-//         <div className="max-w-4xl mx-auto space-y-4">
-//           {data?.map((msg) => (
-//             <ChatMessage key={msg.id} message={msg} />
-//           ))}
-//           {newMessages &&
-//             newMessages?.map((msg, index) => (
-//               <NewChatMessage
-//                 key={`${msg.content}-${index}`}
-//                 isUser={msg.isUser}
-//                 content={msg.content}
-//               />
-//             ))}
-//           <ChatMessageStream event={event} tokenStream={tokenStream} />
-//           <div ref={messagesEndRef} />
-//         </div>
-//       </div>
+  const handleDoneStreaming = (message: string | null) => {
+    setFinalResponse(message);
+  };
 
-//       {/* Chat Input Area */}
-//       <div className="sticky bottom-0 bg-white px-4 py-6">
-//         <div className="max-w-4xl mx-auto">
-//           <Form
-//             onSubmit={handleSendMessage}
-//             schema={chatInputSchema}
-//             options={{
-//               defaultValues: {
-//                 content: "",
-//               },
-//             }}
-//           >
-//             {({ control }) => (
-//               <div className="relative">
-//                 <FormField
-//                   control={control}
-//                   name="content"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormControl>
-//                         <div className="relative">
-//                           <textarea
-//                             className="w-full resize-none rounded-2xl border border-gray-200 px-4 py-3 pb-12 placeholder:text-gray-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 text-sm min-h-[52px] max-h-32"
-//                             placeholder="Ask Journey AI or type @ to use an AI Extension"
-//                             rows={1}
-//                             {...field}
-//                             onKeyDown={(e) => {
-//                               if (e.key === "Enter" && !e.shiftKey) {
-//                                 e.preventDefault();
-//                                 const form = e.currentTarget.form;
-//                                 if (form) {
-//                                   form.dispatchEvent(
-//                                     new Event("submit", {
-//                                       cancelable: true,
-//                                       bubbles: true,
-//                                     })
-//                                   );
-//                                 }
-//                               }
-//                             }}
-//                             onInput={(e) => {
-//                               const target = e.target as HTMLTextAreaElement;
-//                               target.style.height = "auto";
-//                               target.style.height =
-//                                 Math.min(target.scrollHeight, 128) + "px";
-//                             }}
-//                           />
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-auto px-4 py-6 transition-all duration-300 ease-in-out">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {/* Render past messages */}
+          <ChatHistory accountId={accountId} sessionId={sessionId} />
+          {/* Render streaming response */}
+          <ResponseStream onDoneStreaming={handleDoneStreaming} />
+          {/* {newUserChat && (
+            <EventResponseStream onDoneStreaming={handleDoneStreaming} />
+          )} */}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-//                           {/* Action Buttons */}
-//                           <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
-//                             <div className="flex items-center gap-1">
-//                               <Button
-//                                 type="button"
-//                                 size="sm"
-//                                 variant="ghost"
-//                                 className="h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-0"
-//                               >
-//                                 <Paperclip size={16} />
-//                                 <span className="sr-only">Add attachment</span>
-//                               </Button>
-
-//                               <Button
-//                                 type="button"
-//                                 size="sm"
-//                                 variant="ghost"
-//                                 className="h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-0"
-//                               >
-//                                 <Globe size={16} />
-//                                 <span className="sr-only">Web search</span>
-//                               </Button>
-
-//                               <Button
-//                                 type="button"
-//                                 size="sm"
-//                                 variant="ghost"
-//                                 className="h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-0"
-//                               >
-//                                 <AtSign size={16} />
-//                                 <span className="sr-only">AI Extension</span>
-//                               </Button>
-
-//                               <Button
-//                                 type="button"
-//                                 size="sm"
-//                                 variant="ghost"
-//                                 className="h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-0"
-//                               >
-//                                 <Layers size={16} />
-//                                 <span className="sr-only">Templates</span>
-//                               </Button>
-//                             </div>
-
-//                             <div className="flex items-center">
-//                               <Button
-//                                 type="submit"
-//                                 size="sm"
-//                                 disabled={
-//                                   !field.value?.trim() ||
-//                                   event === "processing_session" ||
-//                                   event === "agent_response"
-//                                 }
-//                                 className="h-8 w-8 rounded-lg bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 p-0"
-//                               >
-//                                 <Send size={16} className="text-white" />
-//                                 <span className="sr-only">Send message</span>
-//                               </Button>
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </FormControl>
-//                     </FormItem>
-//                   )}
-//                 />
-//               </div>
-//             )}
-//           </Form>
-
-//           {/* Footer Text */}
-//           <p className="text-center text-xs text-gray-500 mt-3">
-//             Journey AI can make mistakes. Check important info.
-//           </p>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
+      <div className="sticky bottom-0 bg-white px-4 py-6">
+        <div className="max-w-4xl mx-auto">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            sessionId={sessionId}
+            accountId={accountId}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};

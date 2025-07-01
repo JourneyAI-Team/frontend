@@ -9,18 +9,19 @@ import type { AttachmentMetadata } from "@/types/models";
 import { ImagePreview } from "./image-preview";
 import { FilePreview } from "./file-preview";
 
+export type ChatBubbleProps = {
+  content: string;
+  isUser: boolean;
+  isStreaming?: boolean;
+  attachments?: AttachmentMetadata[];
+};
 export const ChatBubble = memo(
   ({
     content,
     isUser,
     // isStreaming = false,
     attachments = [],
-  }: {
-    content: string;
-    isUser: boolean;
-    isStreaming?: boolean;
-    attachments?: AttachmentMetadata[];
-  }) => {
+  }: ChatBubbleProps) => {
     return (
       <div
         className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
@@ -28,7 +29,7 @@ export const ChatBubble = memo(
         <div className="flex flex-col space-y-1 max-w-[80%]">
           {/* Render attachments if they exist */}
           {attachments.length > 0 && (
-            <div className="flex gap-2 flex-wrap mb-2">
+            <div className="flex flex-col gap-2">
               {attachments.map((attachment, index) => (
                 <div
                   key={`${attachment.name}-${index}`}

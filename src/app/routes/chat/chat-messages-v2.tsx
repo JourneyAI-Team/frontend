@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   useCallback,
   useEffect,
@@ -7,9 +8,6 @@ import {
   memo,
 } from "react";
 import { useLoaderData } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { FileSearch } from "lucide-react";
-
 import { useWebSocketConnection } from "@/hooks/use-ws";
 
 import {
@@ -26,13 +24,10 @@ import { ChatBubble } from "@/features/chat/components/chat-bubble";
 
 import type { Message, MessageOutputMessageType } from "@/types/models";
 import type { BaseEventResponse } from "@/types/api";
+import { handleEventStream, type ParsedEvent } from "@/utils/handleEventStream";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { LoadingDots } from "@/features/chat/components/loading";
-import { ToolCallIndicatorBadge } from "@/features/chat/components/tool-call-indicator-badge";
-
-import { handleEventStream, type ParsedEvent } from "@/utils/handleEventStream";
-import { createPage } from "@/utils/dynamic-rendering/service";
-import { Button } from "@/components/ui/button";
 
 const ChatBubbles = ({ message }: { message: Message }) => {
   const isUser = message.sender === "user"; // message can only be from user or assistant
@@ -92,38 +87,31 @@ const RenderEvent = ({
     );
   }
 
-  if (event?.event === "connection_established") {
-    // return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
-    // if (event.type === "token") {
-    //   if (tokens !== "") {
-    //     return (
-    //       <ChatBubble content={tokens} isUser={false} isStreaming={true} />
-    //     );
-    //   } else {
-    //     return <span />;
-    //   }
-    // }
-    // if (event.type === "token") {
-    //   if (tokens !== "") {
-    //     return (
-    //       <ChatBubble content={tokens} isUser={false} isStreaming={true} />
-    //     );
-    //   }
-    // } else {
-    //   return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
-    // }
-    return (
-      <div className="flex w-full justify-start">
-        <div className="flex flex-col space-y-1 max-w-[80%]">
-          <div className="px-4 py-3">
-            <LoadingDots className="text-gray-400" />
+  if (event?.event === "agent_response") {
+    if (tokens.length > 0) {
+      return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
+    } else {
+      return (
+        <div className="flex w-full justify-start">
+          <div className="flex flex-col space-y-1 max-w-[80%]">
+            <div className="px-4 py-3">
+              <LoadingDots className="text-gray-400" />
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
-  return <ChatBubble content={tokens} isUser={false} isStreaming={true} />;
+  return (
+    <div className="flex w-full justify-start">
+      <div className="flex flex-col space-y-1 max-w-[80%]">
+        <div className="px-4 py-3">
+          <LoadingDots className="text-gray-400" />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const EventResponseStream = ({
@@ -132,41 +120,32 @@ const EventResponseStream = ({
   onDoneStreaming: (fullResponse: string) => void;
 }) => {
   const { lastJsonMessage } = useWebSocketConnection();
-  const [tokens, setTokens] = useState<string>("");
+  const [tokens, setTokens] = useState<string[]>([]);
   const [curEvent, setCurEvent] = useState<ParsedEvent>(null);
 
   useEffect(() => {
     const event = lastJsonMessage as BaseEventResponse;
-
     if (event) {
       const parsedEvent = handleEventStream(event);
-      console.log(event);
       if (parsedEvent) {
         if (parsedEvent.type === "token") {
-          setTokens((prev) => prev + parsedEvent.data);
-        }
-        if (parsedEvent.type === "message") {
-          onDoneStreaming(parsedEvent.data || tokens);
-        }
-        if (parsedEvent.type === "file_search_call") {
-          setTokens((prev) => prev + " Searching for your files...");
+          setTokens((prev) => [...prev, parsedEvent.data]);
         }
         if (parsedEvent.type === "done") {
-          setTokens("");
+          onDoneStreaming(tokens.join(""));
+          setTokens([]);
         }
       }
       setCurEvent(parsedEvent);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastJsonMessage]);
 
-  return <RenderEvent tokens={tokens} event={curEvent} />;
+  return <RenderEvent tokens={tokens.join("")} event={curEvent} />;
 };
 
 const MessageList = memo(
   ({ accountId, sessionId }: { accountId: string; sessionId: string }) => {
     // Fetch past messages from database
-
     const { data: messages } = useListMessages({
       queryParams: {
         query: {
@@ -226,11 +205,9 @@ export const Chat = () => {
     (chatText: ChatInputType, files?: File[]) => {
       const textContent = chatText.content.trim();
       if (!textContent) return;
+
       setNewUserChat(textContent);
-      if (files) {
-        setNewUserChatAttachments(files);
-      }
-      setFullResponse(null);
+      setNewUserChatAttachments(files || []);
     },
     []
   );
@@ -248,8 +225,11 @@ export const Chat = () => {
         (old = []) => [...old, newMsg]
       );
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullResponse]);
+    // clear the temporary UI bits
+    setNewUserChat(null);
+    setNewUserChatAttachments(null);
+    setFullResponse(null);
+  }, [fullResponse, queryClient, accountId, sessionId]);
 
   useEffect(() => {
     if (!newUserChat) return;
@@ -262,8 +242,7 @@ export const Chat = () => {
       ["messages", { account_id: accountId!, session_id: sessionId! }],
       (old = []) => [...old, newMsg]
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newUserChat]);
+  }, [newUserChat, queryClient, accountId, sessionId]);
 
   const buildMessageSchema = (isUser: boolean): ListMessagesResponse => {
     const baseMessage = {
@@ -313,23 +292,18 @@ export const Chat = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-auto px-4 py-6 transition-all duration-300 ease-in-out">
+      <div
+        className="flex-1 overflow-auto px-4 py-6 transition-all duration-300 ease-in-out"
+        // ref={chatContainerRef}
+      >
         <div className="max-w-4xl mx-auto space-y-4">
           {/* Render past messages */}
           <MessageList accountId={accountId} sessionId={sessionId} />
           {/* Render streaming response */}
+
           {newUserChat && (
             <EventResponseStream onDoneStreaming={handleDoneStreaming} />
           )}
-          {createPage({
-            type: "ChatBubble",
-            data: {
-              id: "123",
-              content: "tesadadasdasdasdt",
-              isUser: false,
-              isStreaming: false,
-            },
-          })}
 
           <div ref={messagesEndRef} />
         </div>

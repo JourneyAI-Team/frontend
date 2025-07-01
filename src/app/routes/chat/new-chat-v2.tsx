@@ -61,6 +61,7 @@ const CustomTabsTrigger = ({
  * @returns The corresponding Lucide React icon component
  */
 const getIconForAssistant = (internal_name: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const iconMap: Record<string, any> = {
     new_client_research_prep: Search,
     new_client_account_plan: FileText,
@@ -230,7 +231,7 @@ export const NewChatV2 = () => {
           {/* Assistant Cards Grid */}
           <div className="grid gap-4 md:grid-cols-2 max-w-4xl mx-auto transition-all duration-300 ease-in-out">
             {isLoading ? (
-              <div className="contents animate-in fade-in duration-1000 fade-out duration-1000">
+              <div className="contents animate-in fade-in fade-out duration-1000">
                 <LoadingAssistantCard />
                 <LoadingAssistantCard />
                 <LoadingAssistantCard />
