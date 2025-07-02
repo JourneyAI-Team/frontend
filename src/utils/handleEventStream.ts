@@ -5,6 +5,7 @@ import type {
   BaseEventResponse,
   AgentResponseTokenStreamEvent,
   AgentResponseMessageOutputEvent,
+  AgentResponseFunctionCallEvent,
   // AgentResponseMessageOutputEvent,
 } from "@/types/api";
 import type { IComponent } from "./dynamic-rendering/service";
@@ -236,4 +237,83 @@ export const reducer: Reducer<State, BaseEventResponse> = (state, event) => {
     components: finalized ? [...kept, finalized] : kept,
     current: null,
   };
+};
+
+export const test = (
+  event: BaseEventResponse,
+  prevComponent: IComponent | null
+): IComponent | null => {
+  const agentResponseData = event.data;
+  if (event.event === "connection_established") {
+    return null;
+  }
+  if (event.event === "agent_response") {
+    switch (agentResponseData.type) {
+      case "agent_switch": {
+        return {
+          type: "ChatLoading",
+          data: {
+            id: uuid(),
+          },
+        };
+      }
+      case "file_search_call": {
+        return {
+          type: "ToolCallIndicatorBadge",
+          data: {
+            id: uuid(),
+            text: "Searched through files",
+          },
+        };
+      }
+      case "token": {
+        const data = agentResponseData as AgentResponseTokenStreamEvent;
+
+        return {
+          type: "ChatBubble",
+          data: {
+            id: uuid(),
+            content: (prevComponent?.data.content || "") + data.delta,
+            isUser: false,
+            isStreaming: true,
+          },
+        };
+      }
+      case "function_call": {
+        const data = agentResponseData as AgentResponseFunctionCallEvent;
+        const args = JSON.parse(data.arguments) as {
+          artifact_type: string;
+          title: string;
+          body: string;
+        };
+        return {
+          type: "FunctionToolCallAccordion",
+          data: {
+            id: uuid(),
+            title: `${args.artifact_type} | ${args.title}`,
+            items: [
+              {
+                type: "Paragraph",
+                data: {
+                  id: uuid(),
+                  text: args.body,
+                },
+              },
+            ],
+          },
+        };
+      }
+      case "web_search_call": {
+        // const data = agentResponseData as AgentResponseWebSearchCallEvent;
+        return {
+          type: "ToolCallIndicatorBadge",
+          data: {
+            id: uuid(),
+            text: "Searched the Web",
+          },
+        };
+      }
+    }
+  }
+  return null;
 };

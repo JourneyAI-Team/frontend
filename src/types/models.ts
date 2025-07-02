@@ -95,15 +95,42 @@ export type MessageOutputType =
   | "file_search_call"
   | "web_search_call";
 
+export type MessageOutputWebSearchCallType = {
+  type: "web_search_call";
+  action: {
+    type: "search";
+    query: string;
+  };
+} & MessageOutputBase;
+
+export type MessageOutputFileSearchCallType = {
+  type: "file_search_call";
+  results: {
+    attributes: Record<string, unknown>;
+    file_id: string;
+    filename: string;
+    score: string;
+    text: string;
+  }[];
+} & MessageOutputBase;
+
 export type MessageOutputMessageType = {
   role: "assistant";
   content: MessageOutputContent[];
+  type: "message";
 } & MessageOutputBase;
 
 export type MessageOutputContent = {
   type: "output_text";
   text: string;
-  annotations: unknown[];
+  annotations: {
+    end_index: number;
+    start_index: number;
+    title: string;
+    type: string;
+    url: string;
+  }[];
+  logprops: unknown[];
 };
 
 export type Message<TMessageOutput = MessageOutputBase> = {

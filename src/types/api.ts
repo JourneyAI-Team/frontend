@@ -22,11 +22,14 @@ export type EventDataType =
   | "done"
   | "token"
   | "message"
-  | "tool_call"
-  | "tool_output"
+  // | "tool_call"
+  // | "tool_output"
   | "handoff"
   | "error"
-  | "file_search_call";
+  | "file_search_call"
+  | "web_search_call"
+  | "function_call"
+  | "function_call_output";
 
 export type Events =
   | "processing_session"
@@ -74,17 +77,21 @@ export type AgentResponseMessageOutputEvent = {
   }[];
 };
 
-export type AgentResponseToolCallEvent = {
-  type: "tool_call";
-  tool_call: {
-    id: string;
-    name: string;
-    args: Record<string, unknown>;
-  };
+export type AgentResponseFunctionCallEvent = {
+  type: "function_call";
+  id: string;
+  arguments: string;
+  call_id: string;
+  name: string;
+  status: "completed";
+  // tool_call: {
+  //   id: string;
+  //   name: string;
+  //   args: Record<string, unknown>;
 };
 
-export type AgentResponseToolCallOutputEvent = {
-  type: "tool_output";
+export type AgentResponseFunctionCallOutputEvent = {
+  type: "function_call_output";
   tool: {
     id: string;
     call_id: string;
@@ -105,6 +112,12 @@ export type AgentResponseFileSearchCallEvent = {
     score: number;
     text: string;
   }[];
+};
+
+export type AgentResponseWebSearchCallEvent = {
+  type: "web_search_call";
+  id: string;
+  action: unknown;
 };
 
 export type AgentResponseHandoffRequestedEvent = {

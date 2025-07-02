@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { ChatBody } from "./routes/chat/chat-body";
 
-import { Chat } from "./routes/chat/chat-messages-v2";
+import { Chat } from "./routes/chat/chat-messages";
 import { NewChatV2 } from "./routes/chat/new-chat-v2";
 import { ErrorPage } from "./routes/error";
 import { AuthPage } from "./routes/auth/auth";

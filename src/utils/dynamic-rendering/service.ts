@@ -7,7 +7,9 @@ type ComponentList =
   | "ChatBubble"
   | "Container"
   | "ChatLoading"
-  | "ToolCallIndicatorBadge";
+  | "ToolCallIndicatorBadge"
+  | "FunctionToolCallAccordion"
+  | "Paragraph";
 
 export interface IComponent {
   type: ComponentList;
